@@ -1,0 +1,19 @@
+# core pipeline
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.4
+lightgbm>=4.3
+# API
+fastapi>=0.110
+uvicorn>=0.29
+mangum>=0.17            # AWS Lambda adapter
+# cloud + voice (optional at runtime)
+boto3>=1.34             # Amazon Bedrock
+requests>=2.31          # ElevenLabs REST
+# MCP server
+mcp>=1.2
+# dev
+matplotlib>=3.8
+pytest>=8
+httpx>=0.27

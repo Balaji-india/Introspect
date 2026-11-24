@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.introspect/
+.aws-sam/
+*.mp3
+.DS_Store

@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Introspect (team Sky-Flyers, wHACKiest 2026). Serverless cloud side: only privacy-gateway
+  facts ever reach these services. Funded by the team's AWS credits.
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+  BedrockGuardrailId:
+    Type: String
+    Default: ""
+    Description: Guardrail that blocks diagnoses / medical claims (create in the Bedrock console)
+
+Conditions:
+  HasGuardrail: !Not [!Equals [!Ref BedrockGuardrailId, ""]]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 1024
+    Environment:
+      Variables:
+        INTROSPECT_USE_BEDROCK: "1"
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+        BEDROCK_GUARDRAIL_ID: !Ref BedrockGuardrailId
+        CONSENT_TABLE: !Ref ConsentLedger
+        BACKUP_BUCKET: !Ref BackupBucket
+        INTROSPECT_STATE_DIR: /tmp/introspect
+
+Resources:
+  # ---------- Auth ----------
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: introspect-users
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+
+  # ---------- API ----------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref UserPoolClient]
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ..
+      Handler: api.main.handler
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref ConsentLedger }
+        - S3CrudPolicy: { BucketName: !Ref BackupBucket }
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+            - !If
+              - HasGuardrail
+              - Effect: Allow
+                Action: [bedrock:ApplyGuardrail]
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail/${BedrockGuardrailId}
+              - !Ref AWS::NoValue
+
+  # ---------- Daily brief (07:00 IST) ----------
+  DailyBriefFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ..
+      Handler: api.daily_brief_job.handler
+      Events:
+        Morning:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(30 1 * * ? *)
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ConsentLedger }
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel]
+              Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockModelId}
+
+  # ---------- Data ----------
+  ConsentLedger:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: user_id, AttributeType: S }
+        - { AttributeName: changed_at, AttributeType: S }
+      KeySchema:
+        - { AttributeName: user_id, KeyType: HASH }
+        - { AttributeName: changed_at, KeyType: RANGE }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      SSESpecification: { SSEEnabled: true }
+
+  BackupKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Introspect opt-in encrypted backups
+      EnableKeyRotation: true
+
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: aws:kms, KMSMasterKeyID: !Ref BackupKey }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - { Id: expire-old-backups, Status: Enabled, ExpirationInDays: 90 }
+
+Outputs:
+  ApiUrl:
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient

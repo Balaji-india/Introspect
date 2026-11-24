@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introspect · your private health twin</title>
+<link rel="icon" href="data:,">
+<script src="/static/vendor/chart.umd.min.js"></script>
+<style>
+  :root { --navy:#1B1F6B; --orange:#FD9B36; --rust:#C2410C; --blue:#2A5BC8; --gray:#6B6459; --cream:#F8F2E4; --card:#fff; --line:#E7DDC8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: "Segoe UI", Calibri, Arial, sans-serif; background:var(--cream); color:#111; }
+  header { background:var(--navy); color:#fff; padding:18px 28px; display:flex; align-items:center; justify-content:space-between; }
+  header h1 { margin:0; font-size:22px; letter-spacing:.3px; }
+  header h1 span { color:var(--orange); }
+  header small { color:#CACFF2; }
+  main { max-width:1200px; margin:0 auto; padding:22px 28px 40px; display:grid; gap:18px; grid-template-columns: 1fr 1fr 1fr; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .span2 { grid-column: span 2; } .span3 { grid-column: span 3; }
+  h2 { margin:0 0 10px; font-size:13px; letter-spacing:.6px; text-transform:uppercase; color:var(--rust); }
+  .big { font-size:44px; font-weight:700; color:var(--navy); line-height:1; }
+  .muted { color:var(--gray); font-size:13px; }
+  .brief { font-size:16px; line-height:1.5; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; background:#EEEFFA; color:var(--navy); margin-left:6px; }
+  ul.ins { list-style:none; padding:0; margin:0; } ul.ins li { padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  ul.ins li:last-child { border:0; } ul.ins .stat { color:var(--gray); font-size:12px; }
+  .row { display:flex; gap:12px; align-items:center; }
+  input[type=range] { width:100%; accent-color: var(--rust); }
+  button { background:var(--navy); color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; }
+  label.sw { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
+  canvas { max-height:260px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Intro<span>spect</span> <small>· private health twin (prototype v0.1)</small></h1>
+  <small id="health">connecting…</small>
+</header>
+<main>
+  <section class="card">
+    <h2>Readiness today</h2>
+    <div class="big" id="readiness">–</div>
+    <div class="muted">50 = your personal normal · 7-day avg <b id="r7">–</b></div>
+  </section>
+  <section class="card span2">
+    <h2>Daily brief <span class="tag" id="briefsrc"></span></h2>
+    <div class="brief" id="brief">Loading…</div>
+    <div class="row" style="margin-top:10px"><button id="play">▶ Play voice brief (ElevenLabs)</button><span class="muted" id="playmsg"></span></div>
+  </section>
+
+  <section class="card span2">
+    <h2>Readiness vs your baseline</h2>
+    <canvas id="rchart"></canvas>
+  </section>
+  <section class="card">
+    <h2>What-if: tonight's screen time</h2>
+    <div class="muted">Minutes on your phone after 11 pm tonight</div>
+    <input type="range" id="screen" min="0" max="180" step="10" value="60">
+    <div class="row"><b id="screenval">60 min</b><span class="muted">→ tomorrow's readiness</span></div>
+    <div class="big" id="whatif" style="margin-top:6px">–</div>
+    <div class="muted" id="evalnote" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Why: what moves your numbers</h2>
+    <ul class="ins" id="insights"></ul>
+  </section>
+  <section class="card">
+    <h2>Late screen time vs sleep</h2>
+    <canvas id="schart"></canvas>
+  </section>
+  <section class="card">
+    <h2>Flagged days</h2>
+    <ul class="ins" id="anoms"></ul>
+  </section>
+
+  <section class="card span3">
+    <h2>Consent vault · what may leave this device</h2>
+    <div id="consent" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px 28px"></div>
+    <div class="muted" style="margin-top:6px">Raw data never leaves the device. Cloud purposes receive only aggregate facts via the privacy gateway.</div>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const j = (u, o) => fetch(u, o).then(r => r.ok ? r.json() : Promise.reject(r));
+const NAVY = "#1B1F6B", RUST = "#C2410C", ORANGE = "#FD9B36";
+
+async function load() {
+  const h = await j("/api/health");
+  $("health").textContent = `API v${h.version} · Bedrock ${h.bedrock ? "on" : "off (template)"} · ElevenLabs ${h.elevenlabs ? "on" : "off"}`;
+  const [tl, ins, an, br] = await Promise.all([j("/api/timeline"), j("/api/insights"), j("/api/anomalies"), j("/api/brief")]);
+  $("readiness").textContent = Math.round(br.facts.readiness_today);
+  $("r7").textContent = Math.round(br.facts.readiness_7d_avg);
+  $("brief").textContent = br.brief.text;
+  $("briefsrc").textContent = br.brief.source;
+
+  const labels = tl.map(d => d.date.slice(5));
+  new Chart($("rchart"), { type: "line", data: { labels, datasets: [
+      { label: "Readiness", data: tl.map(d => d.readiness), borderColor: NAVY, tension: .3, pointRadius: 0, borderWidth: 2 },
+      { label: "Flagged", data: tl.map(d => d.is_anomaly ? d.readiness : null), showLine: false, pointRadius: 5, pointBackgroundColor: RUST, borderColor: RUST },
+      { label: "Your normal", data: tl.map(() => 50), borderColor: "#B8AE9C", borderDash: [5, 4], pointRadius: 0, borderWidth: 1 } ]},
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } } } });
+
+  new Chart($("schart"), { type: "scatter", data: { datasets: [{ label: "nights",
+      data: tl.filter(d => d.sleep_min != null && d.screen_after_11pm_min != null).map(d => ({ x: d.screen_after_11pm_min, y: d.sleep_min / 60 })),
+      backgroundColor: ORANGE }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "screen after 11 pm (min)" } }, y: { title: { display: true, text: "sleep (h)" } } } } });
+
+  $("insights").innerHTML = ins.map(i => `<li>${i.sentence}<div class="stat">ρ = ${i.rho}, p = ${i.p_value}, ${i.n_days} days</div></li>`).join("") || "<li>Not enough data yet.</li>";
+  $("anoms").innerHTML = an.slice(-5).reverse().map(a => `<li><b>${a.date}</b><div class="stat">${
+      a.drift.map(d => `${d.metric} ${d.value} vs normal ${d.your_normal}`).join(" · ") || "unusual combination (Isolation Forest)"}</div></li>`).join("");
+  await renderConsent();
+  const usual = await j("/api/forecast");             // start the slider at this user's usual night
+  if (usual.status === "ok") $("screen").value = Math.round(usual.planned_screen_min / 10) * 10;
+  await whatIf();
+}
+
+async function whatIf() {
+  const v = $("screen").value; $("screenval").textContent = `${v} min`;
+  const f = await j(`/api/forecast?screen_min=${v}`);
+  if (f.status !== "ok") { $("whatif").textContent = "–"; return; }
+  $("whatif").textContent = Math.round(f.tomorrow_readiness);
+  $("evalnote").textContent = `${f.model} · backtest MAE ${f.eval.test_mae} vs ${f.eval.persistence_mae} (persistence)`;
+}
+
+async function renderConsent() {
+  const c = await j("/api/consent");
+  const rows = [];
+  for (const kind of ["sources", "purposes"]) for (const [k, v] of Object.entries(c[kind]))
+    rows.push(`<label class="sw">${kind === "sources" ? "Source" : "Purpose"}: ${k.replace(/_/g, " ")}<input type="checkbox" data-kind="${kind}" data-key="${k}" ${v ? "checked" : ""}></label>`);
+  $("consent").innerHTML = rows.join("");
+  $("consent").querySelectorAll("input").forEach(el => el.onchange = () =>
+    j("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: el.dataset.kind, key: el.dataset.key, value: el.checked }) }));
+}
+
+$("screen").oninput = whatIf;
+$("play").onclick = async () => {
+  const r = await fetch("/api/brief/voice", { method: "POST" });
+  if (!r.ok) { $("playmsg").textContent = (await r.json()).detail; return; }
+  new Audio(URL.createObjectURL(await r.blob())).play();
+};
+load().catch(e => { $("health").textContent = "API not reachable"; console.error(e); });
+</script>
+</body>
+</html>
