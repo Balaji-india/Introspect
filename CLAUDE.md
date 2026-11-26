@@ -36,19 +36,21 @@ introspect/        core library
   privacy.py       allow-listed aggregate facts; release(facts, purpose) needs consent
   consent.py       local JSON consent vault (.introspect/consent.json)
   narrate.py       template brief, or Bedrock Converse + Guardrails with a number-grounding check
+  ask.py           "Ask your data": on-device intent matcher over gateway facts (Bedrock optional, grounded)
   voice.py         ElevenLabs TTS (needs key + 'voice_brief' consent)
   pipeline.py      run(data_dir) -> timeline, anomalies, insights, forecast, facts, brief
 api/main.py        FastAPI; serves dashboard at / and /static; Lambda handler via Mangum
 dashboard/index.html  single-file dashboard (Chart.js vendored at dashboard/vendor, works offline)
 mcp_server/server.py  MCP tools get_daily_summary / get_insights (need 'mcp_access' consent)
 infra/template.yaml   AWS SAM template (not deployed)
-scripts/run_demo.py   CLI demo; scripts/generate_sample_data.py
-tests/                12 pytest tests
+scripts/start_demo.py one-command demo start (demo.bat / demo.sh); scripts/run_demo.py CLI demo
+tests/                33 pytest tests (conftest forces cloud features off)
 ```
 
 ## Existing API
 `GET /api/health` · `/api/timeline` · `/api/anomalies` · `/api/insights` · `/api/forecast?screen_min=&exam_tomorrow=` ·
-`/api/brief` · `POST /api/brief/voice` · `GET|POST /api/consent` · `GET /api/facts/{purpose}` (403 without consent) · `GET /` dashboard
+`/api/brief` · `POST /api/brief/voice` · `GET|POST /api/consent` · `GET /api/facts/{purpose}` (403 without consent) · `POST /api/ask` ·
+`GET|POST /api/demo/scenario` · `POST /api/demo/reset` · `GET /` dashboard
 
 ## Setup (Windows PowerShell)
 ```powershell
@@ -63,7 +65,7 @@ macOS/Linux: `source .venv/bin/activate`.
 ## Optional cloud (only if time allows; must keep fallbacks)
 `.env`: `INTROSPECT_USE_BEDROCK=1`, `AWS_REGION=us-east-1`, `BEDROCK_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0`,
 `ELEVENLABS_API_KEY=...`. AWS credentials come from `aws configure`. Cloud purposes also need consent toggled in the dashboard.
-Note: `config.py` reads environment variables only. Load `.env` with python-dotenv at the top of `api/main.py` if you use it.
+`config.py` reads `.env` itself at import (no python-dotenv needed; real environment variables win).
 
 ## Style
 Python 3.11+, type hints, small functions, no new heavy dependencies. Dashboard: keep it a single HTML file with the
