@@ -26,6 +26,9 @@
 Assign names to the speaker slots tonight. Only switch slides with the arrow keys; no clicking around.
 
 ## Live demo click path (~90 s)
+> Dashboard layout (redesign): **Simulate** buttons sit in the top bar; **Privacy** and **Ask your data** are one click
+> away in the sidebar. Readiness is the big number top-right. Clicking a red dot or a flagged day opens its detail sheet.
+
 1. **Dashboard top (10 s):** "Readiness 60, where 50 is *your* normal, not a population average. Here's today's brief." Click **Play brief**.
 2. **Readiness chart (10 s):** "Red dots are days that drifted from this user's baseline. You can see the exam week."
 3. **Why card (10 s):** "The why-engine found that late screen time costs this user about 29 minutes of sleep, with p below 0.001."

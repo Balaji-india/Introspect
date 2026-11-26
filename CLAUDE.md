@@ -68,5 +68,6 @@ macOS/Linux: `source .venv/bin/activate`.
 `config.py` reads `.env` itself at import (no python-dotenv needed; real environment variables win).
 
 ## Style
-Python 3.11+, type hints, small functions, no new heavy dependencies. Dashboard: keep it a single HTML file with the
-existing palette (navy #1B1F6B, orange #FD9B36, rust #C2410C, cream #F8F2E4). No CDN links (the demo must work offline).
+Python 3.11+, type hints, small functions, no new heavy dependencies. Dashboard: keep it a single HTML file following
+DESIGN.md (black ground, signal red #EE3124 for brand/controls/flagged days, lime #D2FF3C for your own numbers; Geist +
+Instrument Serif, vendored). The deck keeps its own navy/orange palette. No CDN links (the demo must work offline).
