@@ -229,3 +229,15 @@ def test_ask_uses_bedrock_only_with_consent_and_grounding(data_dir, monkeypatch)
 
     monkeypatch.setattr(boto3, "client", boom)
     assert ask.answer("Why am I tired?", facts)["source"] == "on-device"
+
+
+def test_dotenv_loader_never_overrides_real_env(tmp_path, monkeypatch):
+    env = tmp_path / ".env"
+    env.write_text("# comment\nINTROSPECT_TEST_A=from_file\nINTROSPECT_TEST_B='quoted'\nnot a line\n")
+    monkeypatch.setenv("INTROSPECT_TEST_A", "from_env")
+    monkeypatch.delenv("INTROSPECT_TEST_B", raising=False)
+    config._load_dotenv(env)
+    import os
+    assert os.environ["INTROSPECT_TEST_A"] == "from_env"
+    assert os.environ["INTROSPECT_TEST_B"] == "quoted"
+    monkeypatch.delenv("INTROSPECT_TEST_B")

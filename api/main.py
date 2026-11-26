@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from introspect import __version__, ask, config, consent, forecast, pipeline, privacy, synthetic, voice
+from introspect import __version__, ask, config, consent, forecast, narrate, pipeline, privacy, synthetic, voice
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="Introspect API", version=__version__,
@@ -52,8 +52,18 @@ def _fitted():
     return _fitted_for(str(data_dir()))
 
 
+@lru_cache(maxsize=16)
+def _brief_for(d: str, cloud_ok: bool):
+    # Re-narrated when the cloud_narration consent flips: Bedrock (if enabled) or the template.
+    return narrate.daily_brief(_result_for(d)["facts"])
+
+
+def _brief():
+    return _brief_for(str(data_dir()), consent.allowed("cloud_narration"))
+
+
 def clear_caches() -> None:
-    for f in (_frame_for, _fitted_for, _result_for):
+    for f in (_frame_for, _fitted_for, _result_for, _brief_for):
         f.cache_clear()
 
 
@@ -86,14 +96,13 @@ def what_if(screen_min: float | None = None, exam_tomorrow: int = 0):
 
 @app.get("/api/brief")
 def brief():
-    r = _result()
-    return {"brief": r["brief"], "facts": r["facts"]}
+    return {"brief": _brief(), "facts": _result()["facts"]}
 
 
 @app.post("/api/brief/voice")
 def brief_voice():
     try:
-        path = voice.synthesize(_result()["brief"]["text"], config.STATE_DIR / "brief.mp3")
+        path = voice.synthesize(_brief()["text"], config.STATE_DIR / "brief.mp3")
     except Exception as e:  # noqa: BLE001 - network/API errors: the dashboard falls back to the device voice
         raise HTTPException(502, f"ElevenLabs unavailable ({type(e).__name__}); using device voice") from e
     if path is None:

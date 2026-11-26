@@ -39,6 +39,8 @@
               padding:12px 14px; font-size:12px; line-height:1.45; color:var(--navy); white-space:pre-wrap; }
   #q { flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; }
   .chips button.chip { background:#FFF4E6; color:var(--rust); border:1px solid var(--orange); border-radius:20px; padding:5px 12px; }
+  .pill { font-size:12px; padding:3px 10px; border-radius:20px; background:#2C3184; color:#CACFF2; }
+  .pill.live { background:var(--orange); color:var(--navy); font-weight:700; }
   footer { max-width:1200px; margin:0 auto; padding:0 28px 28px; display:flex; justify-content:space-between; }
   footer a { color:var(--gray); font-size:12px; text-decoration:underline; cursor:pointer; }
 </style>
@@ -46,7 +48,7 @@
 <body>
 <header>
   <h1>Intro<span>spect</span> <small>· private health twin (prototype v0.1)</small></h1>
-  <small id="health">connecting…</small>
+  <div class="row"><span class="pill" id="bedrock">Bedrock: …</span><small id="health">connecting…</small></div>
 </header>
 <main>
   <section class="card">
@@ -134,7 +136,7 @@ const SCEN_LABEL = { default: "sample data", normal: "normal", exam_week: "exam 
 let health = {};
 async function load() {
   const h = health = await j("/api/health");
-  $("health").textContent = `API v${h.version} · Bedrock ${h.bedrock ? "on" : "off (template)"} · ElevenLabs ${h.elevenlabs ? "on" : "off"}`;
+  $("health").textContent = `API v${h.version} · ElevenLabs ${h.elevenlabs ? "on" : "off (device voice)"}`;
   await renderConsent();
   await render();
 }
@@ -151,8 +153,7 @@ async function render() {
   $("r7").textContent = Math.round(br.facts.readiness_7d_avg);
   stopVoice();
   $("answer").textContent = "";
-  $("brief").textContent = br.brief.text;
-  $("briefsrc").textContent = br.brief.source;
+  showBrief(br.brief);
   $("scenario").textContent = SCEN_LABEL[sc.scenario] || sc.scenario;
   document.querySelectorAll(".sim button").forEach(b => b.classList.toggle("on", b.dataset.scenario === sc.scenario));
 
@@ -187,6 +188,14 @@ document.querySelectorAll(".sim button").forEach(b => b.onclick = async () => {
   finally { all.forEach(x => x.disabled = false); }
 });
 
+function showBrief(b) {
+  $("brief").textContent = b.text;
+  $("briefsrc").textContent = b.source;
+  const live = b.source === "bedrock";
+  $("bedrock").classList.toggle("live", live);
+  $("bedrock").textContent = live ? "Bedrock: live" : health.bedrock ? "Bedrock: on-device until consent" : "Bedrock: off (on-device)";
+}
+
 let whatIfSeq = 0;
 async function whatIf() {
   const v = $("screen").value; $("screenval").textContent = `${v} min`;
@@ -208,6 +217,7 @@ async function renderConsent() {
     await j("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kind: el.dataset.kind, key: el.dataset.key, value: el.checked }) });
     await renderGateway();
+    if (health.bedrock && el.dataset.key === "cloud_narration") showBrief((await j("/api/brief")).brief);
   });
 }
 

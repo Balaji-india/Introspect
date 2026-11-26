@@ -125,3 +125,24 @@ def test_ask_endpoint_chips():
         body = r.json()
         assert body["source"] == "on-device" and len(body["answer"]) > 20
     assert "Why am I tired?" in client.get("/").text
+
+
+def test_brief_switches_to_bedrock_when_consented(monkeypatch):
+    import boto3
+
+    facts = client.get("/api/brief").json()["facts"]
+    text = f"Readiness is {round(facts['readiness_today'])} today. " + facts["suggested_action"]
+
+    class Fake:
+        def converse(self, **kw):
+            return {"output": {"message": {"content": [{"text": text}]}}}
+
+    monkeypatch.setattr(config, "USE_BEDROCK", True)
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: Fake())
+    main.clear_caches()
+    assert client.get("/api/brief").json()["brief"]["source"] == "template"       # no consent yet
+    client.post("/api/consent", json={"kind": "purposes", "key": "cloud_narration", "value": True})
+    assert client.get("/api/brief").json()["brief"] == {"text": text, "source": "bedrock", "model": config.BEDROCK_MODEL_ID}
+    client.post("/api/consent", json={"kind": "purposes", "key": "cloud_narration", "value": False})
+    assert client.get("/api/brief").json()["brief"]["source"] == "template"
+    main.clear_caches()
