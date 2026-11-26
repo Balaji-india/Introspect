@@ -51,6 +51,19 @@ def port_free(port: int) -> bool:
         return s.connect_ex(("127.0.0.1", port)) != 0
 
 
+EDGE_PATHS = [Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"),
+              Path(r"C:\Program Files\Microsoft\Edge\Application\msedge.exe")]
+
+
+def open_browser(url: str) -> None:
+    """On Windows prefer Microsoft Edge (the browser the demo, incl. the offline voice, was tested in)."""
+    edge = next((p for p in EDGE_PATHS if p.exists()), None) if sys.platform == "win32" else None
+    if edge is not None:
+        subprocess.Popen([str(edge), "--new-window", url])
+    else:
+        webbrowser.open(url)
+
+
 def warm(base: str) -> None:
     """Hit the heavy endpoints once so the first dashboard load is instant."""
     for path in ("/api/brief", "/api/timeline", "/api/forecast"):
@@ -75,7 +88,7 @@ def main() -> int:
         url = f"http://127.0.0.1:{port}"
         print(f"[demo] Introspect is already running at {url}")
         if not a.no_browser:
-            webbrowser.open(url)
+            open_browser(url)
         return 0
     while not port_free(port):
         print(f"[demo] Port {port} is busy, trying {port + 1}")
@@ -101,7 +114,7 @@ def main() -> int:
         warm(url)
         print(f"[demo] Ready in {time.time() - t0:.1f} s at {url}   (Ctrl+C to stop)")
         if not a.no_browser:
-            webbrowser.open(url)
+            open_browser(url)
         return proc.wait()
     except KeyboardInterrupt:
         print("\n[demo] Stopping.")
