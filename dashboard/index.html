@@ -62,7 +62,7 @@
   <section class="card span2">
     <h2>Daily brief <span class="tag" id="briefsrc"></span></h2>
     <div class="brief" id="brief">Loading…</div>
-    <div class="row" style="margin-top:10px"><button id="play">▶ Play voice brief (ElevenLabs)</button><span class="muted" id="playmsg"></span></div>
+    <div class="row" style="margin-top:10px"><button id="play">▶ Play brief (device voice · ElevenLabs when key set)</button><span class="muted" id="playmsg"></span></div>
   </section>
 
   <section class="card span2">
@@ -115,8 +115,9 @@ const NAVY = "#1B1F6B", RUST = "#C2410C", ORANGE = "#FD9B36";
 const charts = {};
 const SCEN_LABEL = { default: "sample data", normal: "normal", exam_week: "exam week", bad_night: "bad night" };
 
+let health = {};
 async function load() {
-  const h = await j("/api/health");
+  const h = health = await j("/api/health");
   $("health").textContent = `API v${h.version} · Bedrock ${h.bedrock ? "on" : "off (template)"} · ElevenLabs ${h.elevenlabs ? "on" : "off"}`;
   await renderConsent();
   await render();
@@ -132,6 +133,7 @@ async function render() {
                                                    j("/api/brief"), j("/api/demo/scenario")]);
   $("readiness").textContent = Math.round(br.facts.readiness_today);
   $("r7").textContent = Math.round(br.facts.readiness_7d_avg);
+  stopVoice();
   $("brief").textContent = br.brief.text;
   $("briefsrc").textContent = br.brief.source;
   $("scenario").textContent = SCEN_LABEL[sc.scenario] || sc.scenario;
@@ -208,11 +210,55 @@ async function renderGateway() {
 }
 
 $("screen").oninput = whatIf;
+// Voice brief: ElevenLabs when a key is set AND the user consented to 'voice_brief';
+// otherwise (or if that fails) the browser's built-in speech, which works offline.
+let audio = null;
+function stopVoice() {
+  if (audio) { audio.pause(); audio = null; }
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  $("play").textContent = "▶ Play brief (device voice · ElevenLabs when key set)";
+}
+function deviceVoice(text, note) {
+  if (!window.speechSynthesis) { $("playmsg").textContent = "No speech engine in this browser."; return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voices = speechSynthesis.getVoices().filter(v => v.lang && v.lang.startsWith("en"));
+  u.voice = voices.find(v => v.localService && v.lang === "en-IN")   // prefer an offline voice
+         || voices.find(v => v.localService) || voices[0] || null;
+  u.rate = 1.0;
+  u.onend = u.onerror = () => stopVoice();
+  speechSynthesis.speak(u);
+  $("play").textContent = "■ Stop";
+  $("playmsg").textContent = note;
+}
 $("play").onclick = async () => {
-  const r = await fetch("/api/brief/voice", { method: "POST" });
-  if (!r.ok) { $("playmsg").textContent = (await r.json()).detail; return; }
-  new Audio(URL.createObjectURL(await r.blob())).play();
+  if ($("play").textContent.startsWith("■")) { stopVoice(); return; }
+  const text = $("brief").textContent;
+  if (health.elevenlabs) {
+    const c = await j("/api/consent");
+    if (c.purposes.voice_brief) {
+      $("playmsg").textContent = "Generating ElevenLabs audio…";
+      try {
+        const r = await fetch("/api/brief/voice", { method: "POST" });
+        if (r.ok) {
+          audio = new Audio(URL.createObjectURL(await r.blob()));
+          audio.onended = stopVoice;
+          await audio.play();
+          $("play").textContent = "■ Stop";
+          $("playmsg").textContent = "ElevenLabs voice";
+          return;
+        }
+      } catch (e) { console.error(e); }
+      deviceVoice(text, "ElevenLabs unavailable, using device voice");
+      return;
+    }
+    deviceVoice(text, "Device voice (turn on 'voice brief' consent for ElevenLabs)");
+    return;
+  }
+  deviceVoice(text, "Device voice, on-device");
 };
+if (window.speechSynthesis) speechSynthesis.getVoices();          // warm up the voice list
+
 $("reset").onclick = async () => {
   $("reset").textContent = "Resetting…";
   await fetch("/api/demo/reset", { method: "POST" });

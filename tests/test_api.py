@@ -90,3 +90,29 @@ def test_privacy_card_flips_with_consent():
     assert not any(isinstance(v, list) and v and isinstance(v[0], (int, float)) for v in facts.values())
     client.post("/api/consent", json={"kind": "purposes", "key": "cloud_narration", "value": False})
     assert client.get("/api/facts/cloud_narration").status_code == 403
+
+
+def test_voice_uses_elevenlabs_with_key_and_consent_else_signals_fallback(monkeypatch):
+    import requests
+
+    assert "device voice" in client.get("/").text                    # button label advertises the fallback
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "test-key")
+    assert client.post("/api/brief/voice").status_code == 412        # key but no consent
+    client.post("/api/consent", json={"kind": "purposes", "key": "voice_brief", "value": True})
+
+    class Resp:
+        content = b"ID3fake-mp3"
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "post", lambda *a, **k: Resp())
+    r = client.post("/api/brief/voice")
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg" and r.content == Resp.content
+
+    def offline(*a, **k):
+        raise requests.ConnectionError("no internet")
+
+    monkeypatch.setattr(requests, "post", offline)
+    r = client.post("/api/brief/voice")
+    assert r.status_code == 502 and "test-key" not in r.text           # never leak the key

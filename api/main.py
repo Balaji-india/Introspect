@@ -92,7 +92,10 @@ def brief():
 
 @app.post("/api/brief/voice")
 def brief_voice():
-    path = voice.synthesize(_result()["brief"]["text"], config.STATE_DIR / "brief.mp3")
+    try:
+        path = voice.synthesize(_result()["brief"]["text"], config.STATE_DIR / "brief.mp3")
+    except Exception as e:  # noqa: BLE001 - network/API errors: the dashboard falls back to the device voice
+        raise HTTPException(502, f"ElevenLabs unavailable ({type(e).__name__}); using device voice") from e
     if path is None:
         raise HTTPException(412, "Voice brief needs ELEVENLABS_API_KEY and 'voice_brief' consent")
     return FileResponse(path, media_type="audio/mpeg")
