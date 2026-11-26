@@ -29,6 +29,8 @@
   button { background:var(--navy); color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; }
   label.sw { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
   canvas { max-height:260px; }
+  footer { max-width:1200px; margin:0 auto; padding:0 28px 28px; display:flex; justify-content:space-between; }
+  footer a { color:var(--gray); font-size:12px; text-decoration:underline; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -80,6 +82,10 @@
     <div class="muted" style="margin-top:6px">Raw data never leaves the device. Cloud purposes receive only aggregate facts via the privacy gateway.</div>
   </section>
 </main>
+<footer>
+  <span class="muted">Wellness insights, not medical advice.</span>
+  <a id="reset" title="Clear demo state: default consent, default sample data">Reset demo</a>
+</footer>
 <script>
 const $ = id => document.getElementById(id);
 const j = (u, o) => fetch(u, o).then(r => r.ok ? r.json() : Promise.reject(r));
@@ -139,6 +145,11 @@ $("play").onclick = async () => {
   const r = await fetch("/api/brief/voice", { method: "POST" });
   if (!r.ok) { $("playmsg").textContent = (await r.json()).detail; return; }
   new Audio(URL.createObjectURL(await r.blob())).play();
+};
+$("reset").onclick = async () => {
+  $("reset").textContent = "Resetting…";
+  await fetch("/api/demo/reset", { method: "POST" });
+  location.reload();
 };
 load().catch(e => { $("health").textContent = "API not reachable"; console.error(e); });
 </script>

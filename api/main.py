@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import shutil
 from functools import lru_cache
 from pathlib import Path
 
@@ -124,6 +125,25 @@ def released_facts(purpose: str):
         return privacy.release(_result()["facts"], purpose)
     except privacy.ConsentError as e:
         raise HTTPException(403, str(e)) from e
+
+
+# --- demo controls ------------------------------------------------------------------------
+# Only these paths inside STATE_DIR are ever deleted by a reset (never the whole folder).
+_STATE_FILES = ("consent.json", "brief.mp3")
+_STATE_DIRS = ("demo_data", "upload")
+
+
+@app.post("/api/demo/reset")
+def demo_reset():
+    """Back to the first-load state: default consent, default sample data, empty caches."""
+    for name in _STATE_FILES:
+        (config.STATE_DIR / name).unlink(missing_ok=True)
+    for name in _STATE_DIRS:
+        shutil.rmtree(config.STATE_DIR / name, ignore_errors=True)
+    _active["dir"] = None
+    clear_caches()
+    _result()                                   # rebuild now so the reloaded page is instant
+    return {"status": "ok", "dataset": "sample", "consent": consent.load()}
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "dashboard"), name="static")
