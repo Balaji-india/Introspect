@@ -179,3 +179,53 @@ def test_scenario_bad_night_is_last_night_and_changes_brief(tmp_path):
 def test_unknown_scenario_is_rejected(tmp_path):
     with pytest.raises(ValueError):
         generate(tmp_path, scenario="zombie")
+
+
+CHIPS = ["Why am I tired?", "How will tomorrow be?", "What should I change?"]
+
+
+@pytest.mark.parametrize("scenario", ["default", "bad_night", "exam_week", "normal"])
+def test_ask_chips_answer_offline_and_grounded(tmp_path, scenario):
+    from introspect import ask
+
+    facts = pipeline.run(generate(tmp_path, scenario=scenario))["facts"]
+    intents = []
+    for q in CHIPS + ["How did I sleep?", "How active was I?", "blah"]:
+        a = ask.answer(q, facts)
+        assert a["source"] == "on-device" and a["answer"]
+        assert narrate.grounded(a["answer"], facts), a["answer"]       # no invented numbers
+        assert "diagnos" not in a["answer"].replace("not a diagnosis", "")
+        intents.append(a["intent"])
+    assert intents == ["why", "tomorrow", "change", "sleep", "steps", "help"]
+    assert facts["suggested_action"] in ask.answer("What should I change?", facts)["answer"]
+
+
+def test_ask_uses_bedrock_only_with_consent_and_grounding(data_dir, monkeypatch):
+    import boto3
+
+    from introspect import ask
+
+    facts = pipeline.run(data_dir)["facts"]
+    monkeypatch.setattr(config, "USE_BEDROCK", True)
+
+    class Fake:
+        def __init__(self, text):
+            self.text = text
+
+        def converse(self, **kw):
+            assert "Question: Why am I tired?" in kw["messages"][0]["content"][0]["text"]
+            return {"output": {"message": {"content": [{"text": self.text}]}}}
+
+    good = f"Your readiness is {round(facts['readiness_today'])}. " + facts["suggested_action"]
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: Fake(good))
+    assert ask.answer("Why am I tired?", facts)["source"] == "on-device"     # no consent yet
+    consent.update("purposes", "cloud_narration", True)
+    assert ask.answer("Why am I tired?", facts) == {"answer": good, "source": "bedrock", "intent": "why"}
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: Fake("You slept 7777 minutes."))
+    assert ask.answer("Why am I tired?", facts)["source"] == "on-device"     # ungrounded -> fallback
+
+    def boom(*a, **k):
+        raise RuntimeError("no credentials")
+
+    monkeypatch.setattr(boto3, "client", boom)
+    assert ask.answer("Why am I tired?", facts)["source"] == "on-device"

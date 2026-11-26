@@ -37,6 +37,8 @@
   .locked .icon { font-size:30px; }
   pre.facts { margin:0; max-height:300px; overflow:auto; background:#F4F5FC; border:1px solid #D9DCF2; border-radius:10px;
               padding:12px 14px; font-size:12px; line-height:1.45; color:var(--navy); white-space:pre-wrap; }
+  #q { flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; }
+  .chips button.chip { background:#FFF4E6; color:var(--rust); border:1px solid var(--orange); border-radius:20px; padding:5px 12px; }
   footer { max-width:1200px; margin:0 auto; padding:0 28px 28px; display:flex; justify-content:space-between; }
   footer a { color:var(--gray); font-size:12px; text-decoration:underline; cursor:pointer; }
 </style>
@@ -102,6 +104,20 @@
     <div class="muted" style="margin-top:6px">Raw data never leaves the device. The privacy gateway releases only these
       allow-listed aggregates (no dates, no ids, no raw series), and only with consent.</div>
   </section>
+  <section class="card span3">
+    <h2>Ask your data <span class="tag" id="asksrc">on-device</span></h2>
+    <div class="row">
+      <input id="q" type="text" maxlength="300" placeholder="Ask about your sleep, readiness, tomorrow…" autocomplete="off">
+      <button id="askbtn">Ask</button>
+    </div>
+    <div class="row chips" style="margin-top:8px">
+      <button class="chip">Why am I tired?</button>
+      <button class="chip">How will tomorrow be?</button>
+      <button class="chip">What should I change?</button>
+    </div>
+    <div class="brief" id="answer" style="margin-top:12px"></div>
+    <div class="muted" style="margin-top:6px">Answers come only from the privacy-gateway facts above, never from raw data.</div>
+  </section>
 </main>
 <footer>
   <span class="muted">Wellness insights, not medical advice.</span>
@@ -134,6 +150,7 @@ async function render() {
   $("readiness").textContent = Math.round(br.facts.readiness_today);
   $("r7").textContent = Math.round(br.facts.readiness_7d_avg);
   stopVoice();
+  $("answer").textContent = "";
   $("brief").textContent = br.brief.text;
   $("briefsrc").textContent = br.brief.source;
   $("scenario").textContent = SCEN_LABEL[sc.scenario] || sc.scenario;
@@ -258,6 +275,21 @@ $("play").onclick = async () => {
   deviceVoice(text, "Device voice, on-device");
 };
 if (window.speechSynthesis) speechSynthesis.getVoices();          // warm up the voice list
+
+async function askData(question) {
+  if (!question.trim()) return;
+  $("q").value = question;
+  $("answer").textContent = "…";
+  try {
+    const a = await j("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+                                   body: JSON.stringify({ question }) });
+    $("answer").textContent = a.answer;
+    $("asksrc").textContent = a.source;
+  } catch (e) { $("answer").textContent = "Could not answer right now."; console.error(e); }
+}
+$("askbtn").onclick = () => askData($("q").value);
+$("q").onkeydown = e => { if (e.key === "Enter") askData($("q").value); };
+document.querySelectorAll(".chip").forEach(c => c.onclick = () => askData(c.textContent));
 
 $("reset").onclick = async () => {
   $("reset").textContent = "Resetting…";

@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from introspect import __version__, config, consent, forecast, pipeline, privacy, synthetic, voice
+from introspect import __version__, ask, config, consent, forecast, pipeline, privacy, synthetic, voice
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="Introspect API", version=__version__,
@@ -99,6 +99,16 @@ def brief_voice():
     if path is None:
         raise HTTPException(412, "Voice brief needs ELEVENLABS_API_KEY and 'voice_brief' consent")
     return FileResponse(path, media_type="audio/mpeg")
+
+
+class Question(BaseModel):
+    question: str
+
+
+@app.post("/api/ask")
+def ask_your_data(q: Question):
+    """Answers only from privacy-gateway facts (on-device, or Bedrock with consent + grounding check)."""
+    return ask.answer(q.question, _result()["facts"])
 
 
 class ConsentChange(BaseModel):

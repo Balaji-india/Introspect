@@ -116,3 +116,12 @@ def test_voice_uses_elevenlabs_with_key_and_consent_else_signals_fallback(monkey
     monkeypatch.setattr(requests, "post", offline)
     r = client.post("/api/brief/voice")
     assert r.status_code == 502 and "test-key" not in r.text           # never leak the key
+
+
+def test_ask_endpoint_chips():
+    for q in ("Why am I tired?", "How will tomorrow be?", "What should I change?"):
+        r = client.post("/api/ask", json={"question": q})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["source"] == "on-device" and len(body["answer"]) > 20
+    assert "Why am I tired?" in client.get("/").text

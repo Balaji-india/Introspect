@@ -49,22 +49,27 @@ def grounded(text: str, facts: dict) -> bool:
     return all(n in allowed or n.rstrip(".0") in allowed for n in re.findall(r"\d+(?:\.\d+)?", text))
 
 
-def bedrock_brief(facts: dict) -> str:
+def bedrock_converse(system: str, user_text: str, max_tokens: int = 220) -> str:
+    """One Bedrock Converse call (Claude Haiku), with Guardrails when configured."""
     import boto3  # imported lazily so the offline demo has no AWS dependency at runtime
 
-    facts = privacy.release(facts, "cloud_narration")
     client = boto3.client("bedrock-runtime", region_name=config.AWS_REGION)
     kwargs = dict(
         modelId=config.BEDROCK_MODEL_ID,
-        system=[{"text": SYSTEM}],
-        messages=[{"role": "user", "content": [{"text": "Facts:\n" + json.dumps(facts)}]}],
-        inferenceConfig={"maxTokens": 220, "temperature": 0.3},
+        system=[{"text": system}],
+        messages=[{"role": "user", "content": [{"text": user_text}]}],
+        inferenceConfig={"maxTokens": max_tokens, "temperature": 0.3},
     )
     if config.BEDROCK_GUARDRAIL_ID:
         kwargs["guardrailConfig"] = {"guardrailIdentifier": config.BEDROCK_GUARDRAIL_ID,
                                      "guardrailVersion": config.BEDROCK_GUARDRAIL_VERSION}
     resp = client.converse(**kwargs)
     return resp["output"]["message"]["content"][0]["text"].strip()
+
+
+def bedrock_brief(facts: dict) -> str:
+    facts = privacy.release(facts, "cloud_narration")
+    return bedrock_converse(SYSTEM, "Facts:\n" + json.dumps(facts))
 
 
 def daily_brief(facts: dict) -> dict:
