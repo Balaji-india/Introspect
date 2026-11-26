@@ -400,8 +400,6 @@ pre.json { margin: 0; max-height: 460px; overflow: auto; padding: 16px 18px; bor
 .thread .q { display: inline-block; padding: 8px 14px; border-radius: 14px 14px 14px 4px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--rule); font-weight: 500; font-size: 15px; }
 .thread .a { margin: 12px 0 0; font-size: 16.5px; line-height: 1.6; max-width: 66ch; text-wrap: pretty; }
 .thread .a.pending { color: var(--faint); }
-.thread .a.pending::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: currentColor; animation: blink 900ms ease-in-out infinite alternate; }
-@keyframes blink { from { opacity: .2; } }
 .thread .src { margin-top: 10px; }
 .ask-empty { margin: 0; font: 400 26px/1.25 var(--serif); color: var(--muted); max-width: 26ch; }
 .composer-wrap { margin-top: auto; padding-top: 28px; }
@@ -1325,7 +1323,7 @@ async function askData(question) {
 function renderThread() {
   $("ask-empty").hidden = S.thread.length > 0;
   $("thread").innerHTML = S.thread.map(t => `<li><div class="q">${esc(t.q)}</div>
-    <p class="a${t.a == null ? " pending" : ""}">${t.a == null ? "Reading your gateway facts" : esc(t.a)}</p>
+    <p class="a${t.a == null ? " pending" : ""}">${t.a == null ? "Reading your gateway facts…" : esc(t.a)}</p>
     ${t.src ? `<div class="src"><span class="tag ${t.src === "bedrock" ? "live" : t.src === "error" ? "coral" : ""}">${t.src === "bedrock" ? "Bedrock, grounded" : t.src === "error" ? "Error" : "Answered on-device"}</span></div>` : ""}</li>`).join("");
   const last = $("thread").lastElementChild; if (last) last.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
 }
