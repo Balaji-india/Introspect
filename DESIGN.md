@@ -1,22 +1,23 @@
 # Introspect dashboard: design system
 
-The world: **a morning journal for your own body.** Quiet paper, one ink, one living colour for *you*,
+The world: **a morning journal for your own body.** Black page, red for the brand, lime for *you*,
 and the number that matters set like a headline in a journal. Open sections divided by space and hairlines,
 not boxes. Decided 2026-11-26 (replaces the navy/orange/cream look, at the owner's request).
 
 ## Colour
+Dark: black ground, **signal red** for the brand and every control, **electric lime** that pops for your own numbers.
+(Changed 2026-11-26 at the owner's request: "red, black, and a colour that can pop out on them".)
+
 | Role | Value | Use |
 |---|---|---|
-| ground | `#F4F4F1` | window, sidebar (second neutral layer) |
-| sheet | `#FFFFFF` | the page sheet the content sits on |
-| raised | `#F7F7F4` | hover rows, inputs, quiet fills |
-| line / rule | `#E4E4DF` / `#EDEDE9` | hairlines |
-| ink / muted / faint | `#121411` / `#5B5E57` / `#6E716A` | text tiers, all ≥4.5:1 on the sheet |
-| **spruce** (you) | `#1F5A47` (tint `#E3EEE9`) | readiness line, today, selection, primary action |
-| **amber** (tonight) | `#B86A12` text, `#E08A2C` marks (tint `#FBEEDC`) | what-if, tomorrow's forecast |
-| **coral** (drift) | `#C23B22` (tint `#FBE6E1`) | flagged days only |
+| ground / sheet / raised | `#0A0A0A` / `#111111` / `#191919` | window and sidebar / content sheet / overlays, hovers |
+| line / rule / control | `#262626` / `#1E1E1E` / `#3A3A3A` | hairlines, slider track |
+| ink / muted / faint | `#F3F2EE` / `#ABAAA4` / `#8C8B86` | text tiers, all ≥4.5:1 on the sheet |
+| **red** | `#EE3124` (text `#FF5A4E`, tint 16%) | brand mark, primary buttons, segmented thumb, switches, tab and nav indicators, flagged days, "below your normal" |
+| **lime** (CSS `--spruce`) | `#D2FF3C` (tint 14%) | readiness line, today, the what-if, "above your normal", focus ring |
+| white | `#F3F2EE` | tomorrow's forecast marker, 7-day marker |
 
-At most these three hues on a screen. Colour goes on data and state, never on chrome.
+Red is the brand and also drift; lime is only ever *your* data, so a lime number always means "you".
 
 ## Type
 - **Geist** (variable, vendored): every label, control, table and number. Tabular figures on all data.
