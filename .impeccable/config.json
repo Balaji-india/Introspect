@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "dashboard/index.html"
+        ],
+        "createdAt": "2026-11-26T15:33:01.561Z",
+        "reason": "Claude triage: flagged elements are the .split column dividers (padding-left 40px set via class) and a 28px-tall centred status pill; inset verified in the rendered page"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "files": [
+          "dashboard/index.html"
+        ],
+        "createdAt": "2026-11-26T15:33:01.571Z",
+        "reason": "user's brief listed Geist as an approved font choice"
+      }
+    ]
+  }
+}
