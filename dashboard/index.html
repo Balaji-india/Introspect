@@ -2,312 +2,1204 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Introspect · your private health twin</title>
-<link rel="icon" href="data:,">
-<script src="/static/vendor/chart.umd.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FCFAF5">
+<title>Introspect · Today</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9.5' fill='none' stroke='%231B1F6B' stroke-width='2.4'/%3E%3Cpath d='M5 13h3.5l2-5 3 9 2-4H19' fill='none' stroke='%23FD9B36' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="/static/vendor/hanken-grotesk.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  :root { --navy:#1B1F6B; --orange:#FD9B36; --rust:#C2410C; --blue:#2A5BC8; --gray:#6B6459; --cream:#F8F2E4; --card:#fff; --line:#E7DDC8; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family: "Segoe UI", Calibri, Arial, sans-serif; background:var(--cream); color:#111; }
-  header { background:var(--navy); color:#fff; padding:18px 28px; display:flex; align-items:center; justify-content:space-between; }
-  header h1 { margin:0; font-size:22px; letter-spacing:.3px; }
-  header h1 span { color:var(--orange); }
-  header small { color:#CACFF2; }
-  main { max-width:1200px; margin:0 auto; padding:22px 28px 40px; display:grid; gap:18px; grid-template-columns: 1fr 1fr 1fr; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-  .span2 { grid-column: span 2; } .span3 { grid-column: span 3; }
-  h2 { margin:0 0 10px; font-size:13px; letter-spacing:.6px; text-transform:uppercase; color:var(--rust); }
-  .big { font-size:44px; font-weight:700; color:var(--navy); line-height:1; }
-  .muted { color:var(--gray); font-size:13px; }
-  .brief { font-size:16px; line-height:1.5; }
-  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:20px; background:#EEEFFA; color:var(--navy); margin-left:6px; }
-  ul.ins { list-style:none; padding:0; margin:0; } ul.ins li { padding:9px 0; border-bottom:1px solid var(--line); font-size:14px; }
-  ul.ins li:last-child { border:0; } ul.ins .stat { color:var(--gray); font-size:12px; }
-  .row { display:flex; gap:12px; align-items:center; }
-  input[type=range] { width:100%; accent-color: var(--rust); }
-  button { background:var(--navy); color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; }
-  label.sw { display:flex; justify-content:space-between; padding:6px 0; font-size:14px; }
-  canvas { max-height:260px; }
-  .sim button { background:#fff; color:var(--navy); border:1px solid var(--navy); padding:6px 10px; }
-  .sim button.on { background:var(--navy); color:#fff; }
-  button:disabled { opacity:.5; cursor:wait; }
-  .locked { display:flex; gap:14px; align-items:center; padding:22px 16px; background:#FBF3EC; border:1px dashed var(--rust);
-            border-radius:10px; color:var(--rust); font-weight:600; }
-  .locked .icon { font-size:30px; }
-  pre.facts { margin:0; max-height:300px; overflow:auto; background:#F4F5FC; border:1px solid #D9DCF2; border-radius:10px;
-              padding:12px 14px; font-size:12px; line-height:1.45; color:var(--navy); white-space:pre-wrap; }
-  #q { flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:8px; font-size:14px; font-family:inherit; }
-  .chips button.chip { background:#FFF4E6; color:var(--rust); border:1px solid var(--orange); border-radius:20px; padding:5px 12px; }
-  .pill { font-size:12px; padding:3px 10px; border-radius:20px; background:#2C3184; color:#CACFF2; }
-  .pill.live { background:var(--orange); color:var(--navy); font-weight:700; }
-  footer { max-width:1200px; margin:0 auto; padding:0 28px 28px; display:flex; justify-content:space-between; }
-  footer a { color:var(--gray); font-size:12px; text-decoration:underline; cursor:pointer; }
+/* Hanken Grotesk (SIL OFL 1.1), vendored so the demo works offline. See vendor/HANKEN_GROTESK_OFL.txt */
+@font-face { font-family: "Hanken Grotesk"; src: url("/static/vendor/hanken-grotesk.woff2") format("woff2");
+             font-weight: 100 900; font-style: normal; font-display: swap; }
+
+:root {
+  /* brand (CLAUDE.md): navy #1B1F6B, orange #FD9B36, rust #C2410C, cream #F8F2E4 */
+  --navy: #1B1F6B; --orange: #FD9B36; --rust: #C2410C; --cream: #F8F2E4;
+  /* roles */
+  --ground: #FCFAF5;        /* page and sidebar */
+  --panel: #F6F0E3;         /* tonal panels, one step toward the brand cream */
+  --panel-2: #EEE6D3;       /* hover / active inside a panel */
+  --surface: #FFFFFF;       /* used once: the main chart card */
+  --border: #E7DECB; --rule: #E9E1CF; --control: #CBBFA6;
+  --ink: #15183A; --muted: #59544B; --faint: #6A645A;
+  --pos: #247B50; --neg: var(--rust);
+  --pill-neg-bg: #FBE7DC; --pill-neg-ink: #8A2C06;
+  --pill-pos-bg: #DDF3E4; --pill-pos-ink: #0F3F23;
+  --band: rgba(27, 31, 107, .07);
+  --r-panel: 16px; --r-control: 10px; --r-chip: 999px;
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-io: cubic-bezier(.77, 0, .175, 1);
+  --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+  --side: 248px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
+body { margin: 0; background: var(--ground); color: var(--ink);
+       font: 400 15px/1.5 "Hanken Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+       font-feature-settings: "ss01"; -webkit-font-smoothing: antialiased; }
+.num, .kpi b, td.n, .tnum { font-variant-numeric: tabular-nums; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 6px; }
+::selection { background: #FDDCB4; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- shell: open plane, labelled sidebar on the ground ---------- */
+.side { position: fixed; inset: 0 auto 0 0; width: var(--side); padding: 22px 14px 18px; display: flex; flex-direction: column;
+        gap: 4px; background: var(--ground); border-right: 1px solid var(--rule); z-index: 30; overflow-y: auto; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 2px; }
+.brand svg { flex: none; }
+.brand b { font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.scope { margin: 6px 8px 18px; padding: 8px 10px; border-radius: var(--r-control); background: var(--panel);
+         font-size: 13px; color: var(--muted); line-height: 1.35; }
+.scope strong { display: block; color: var(--ink); font-weight: 550; font-size: 13.5px; }
+nav.primary { display: flex; flex-direction: column; gap: 2px; }
+nav.primary a { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--r-control);
+                text-decoration: none; color: var(--muted); font-size: 14.5px; transition: background-color 150ms ease, color 150ms ease; }
+nav.primary a svg { width: 17px; height: 17px; flex: none; }
+nav.primary a[aria-current="page"] { background: var(--panel-2); color: var(--ink); font-weight: 550; }
+@media (hover: hover) and (pointer: fine) { nav.primary a:hover { background: var(--panel); color: var(--ink); } }
+.group-label { margin: 24px 10px 8px; font-size: 12.5px; color: var(--faint); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 0 4px; }
+.seg button { height: 32px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--r-control);
+              font-size: 13px; color: var(--ink); transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease; }
+.seg button[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.seg button:disabled { opacity: .55; cursor: progress; }
+@media (hover: hover) and (pointer: fine) { .seg button:not([aria-pressed="true"]):hover { border-color: var(--control); background: var(--panel); } }
+.side-note { margin: 8px 10px 0; font-size: 12.5px; color: var(--faint); min-height: 19px; }
+.side-note.busy::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px;
+                          border: 1.6px solid var(--control); border-top-color: var(--navy); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.textbtn { background: none; border: 0; padding: 4px 10px; margin: 2px 0 0; font-size: 13px; color: var(--muted);
+           text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--control); align-self: flex-start; border-radius: 6px; }
+@media (hover: hover) and (pointer: fine) { .textbtn:hover { color: var(--ink); text-decoration-color: currentColor; } }
+.side-foot { margin-top: auto; padding: 16px 10px 0; display: grid; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.stat-row { display: flex; align-items: center; gap: 8px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--control); flex: none; }
+.dot.on { background: var(--pos); } .dot.live { background: var(--orange); }
+
+/* phone / tablet bar */
+.mbar { display: none; position: sticky; top: 0; z-index: 25; height: 52px; padding: 0 12px 0 16px; align-items: center; gap: 10px;
+        background: var(--ground); border-bottom: 1px solid var(--rule); }
+.mbar b { font-size: 16px; font-weight: 650; }
+.mbar .where { color: var(--muted); font-size: 14px; }
+.iconbtn { margin-left: auto; width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; border-radius: 12px; }
+.scrim { position: fixed; inset: 0; background: rgba(21, 24, 58, .28); opacity: 0; pointer-events: none; z-index: 29;
+         transition: opacity 240ms ease; }
+
+/* ---------- canvas: centred 1100px column, 12 columns of 77px with 16px gutters (12*77 + 11*16 = 1100) ---------- */
+main { margin-left: var(--side); padding: 34px 40px 40px; min-height: 100vh; }
+.col { max-width: 1100px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.s12 { grid-column: span 12; } .s9 { grid-column: span 9; } .s8 { grid-column: span 8; } .s7 { grid-column: span 7; }
+.s6 { grid-column: span 6; } .s5 { grid-column: span 5; } .s4 { grid-column: span 4; } .s3 { grid-column: span 3; }
+
+.view { display: none; }
+.view.active { display: block; }
+.view.enter .grid > *, .view.enter .title-row { animation: rise 320ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 0 0 22px; }
+h1 { margin: 0; font-size: 30px; line-height: 1.18; font-weight: 500; letter-spacing: -.02em; max-width: 34ch; text-wrap: balance; }
+.sub { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+h2 { margin: 0; font-size: 16px; line-height: 1.3; font-weight: 600; letter-spacing: -.005em; }
+.panel { background: var(--panel); border-radius: var(--r-panel); padding: 20px 22px; min-width: 0; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.panel-head .meta { font-size: 13px; color: var(--muted); }
+.panel.fill { display: flex; flex-direction: column; }
+.panel.fill .card { flex: 1; display: flex; flex-direction: column; }
+.panel.fill .card .chart { flex: 1; min-height: 260px; }
+.card { background: var(--surface); border-radius: 12px; padding: 14px 14px 8px; border: 1px solid var(--border); }
+.link { font-size: 13.5px; color: var(--navy); text-decoration: none; font-weight: 550; border-radius: 6px; }
+.link span { display: inline-block; transition: transform 160ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) { .link:hover span { transform: translateX(3px); } .link:hover { text-decoration: underline; text-underline-offset: 3px; } }
+
+/* buttons: fully round, decided once */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: var(--r-chip); border: 1px solid transparent;
+       font-size: 14px; font-weight: 550; transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease; white-space: nowrap; }
+.btn:active, .seg button:active, .chip:active, .preset:active { transform: scale(.97); }
+.btn.primary { background: var(--navy); color: #fff; }
+@media (hover: hover) and (pointer: fine) { .btn.primary:hover { background: #262B86; } .btn.ghost:hover { background: var(--panel-2); } }
+.btn.ghost { background: transparent; border-color: var(--control); color: var(--ink); }
+.btn:disabled { opacity: .55; cursor: progress; }
+.btn svg { width: 14px; height: 14px; }
+.tag { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: var(--r-chip); font-size: 12px; font-weight: 550;
+       background: var(--panel-2); color: var(--muted); white-space: nowrap; }
+.tag.live { background: #FFE6C7; color: #7A3A00; }
+.tag.neg { background: var(--pill-neg-bg); color: var(--pill-neg-ink); }
+.tag.pos { background: var(--pill-pos-bg); color: var(--pill-pos-ink); }
+
+/* ---------- Today ---------- */
+.brief { display: grid; grid-template-columns: 1fr auto; gap: 16px 28px; align-items: start; }
+.brief p { margin: 0; font-size: 18px; line-height: 1.55; max-width: 62ch; text-wrap: pretty; }
+.brief .actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.brief .msg { font-size: 12.5px; color: var(--muted); min-height: 18px; text-align: right; max-width: 220px; }
+.eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.eq i { width: 2px; background: currentColor; border-radius: 1px; height: 4px; animation: eq 700ms var(--ease-io) infinite alternate; }
+.eq i:nth-child(2) { animation-delay: -250ms; } .eq i:nth-child(3) { animation-delay: -450ms; }
+@keyframes eq { to { height: 12px; } }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; }
+.kpi { padding: 18px 22px 18px; min-width: 0; }
+.kpi + .kpi { box-shadow: inset 1px 0 0 var(--rule); }
+.kpi .l { font-size: 13.5px; color: var(--muted); }
+.kpi b { display: block; margin: 6px 0 2px; font-size: 26px; line-height: 1.1; font-weight: 450; letter-spacing: -.015em; }
+.kpi b small { font-size: 14px; color: var(--faint); font-weight: 400; letter-spacing: 0; margin-left: 3px; }
+.kpi.lead b { font-size: 38px; font-weight: 550; color: var(--navy); }
+.kpi .d { font-size: 13px; color: var(--muted); }
+.kpi .d.pos { color: var(--pos); } .kpi .d.neg { color: var(--neg); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; flex: none; }
+.sw.line { width: 16px; height: 2px; background: var(--navy); border-radius: 1px; }
+.sw.dash { width: 16px; height: 0; border-top: 1.5px dashed #9C927E; }
+.sw.flag { width: 10px; height: 10px; border-radius: 50%; background: var(--rust); border: 1.5px solid #fff; }
+.sw.band { width: 12px; height: 12px; background: rgba(27, 31, 107, .12); border-radius: 2px; }
+.sw.fc { width: 16px; height: 2px; background: var(--orange); }
+
+.chart { position: relative; width: 100%; min-width: 0; overflow: hidden; }
+.chart svg { max-width: 100%; }
+.chart svg { display: block; overflow: visible; }
+.chart .g { stroke: #EDE6D7; stroke-width: 1; }
+.chart .tk { fill: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.chart .base { stroke: #9C927E; stroke-width: 1.25; stroke-dasharray: 4 4; fill: none; }
+.chart .base-l { fill: var(--muted); font-size: 11.5px; }
+.chart .ln { fill: none; stroke: var(--navy); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .ln.fc { stroke: var(--orange); stroke-width: 2.5; }
+.chart .flag { fill: var(--rust); stroke: #fff; stroke-width: 1.5; }
+.chart .flag.new { animation: pop 420ms var(--ease-out) both; transform-box: fill-box; transform-origin: center; }
+.chart .ring { fill: none; stroke: var(--rust); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ring 1400ms var(--ease-out) 2 both; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes ring { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+.chart .today { fill: var(--surface); stroke: var(--navy); stroke-width: 2; }
+.chart .today-l { paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; fill: var(--navy); font-size: 12.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.chart .cursor { stroke: var(--ink); stroke-width: 1; opacity: .25; }
+.chart .hot { fill: var(--navy); stroke: #fff; stroke-width: 2; }
+.chart .pt { fill: var(--navy); opacity: .5; }
+.chart .pt.flagged { fill: var(--rust); opacity: .9; }
+.chart .marker { stroke: var(--faint); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .knob { fill: var(--surface); stroke: var(--ink); stroke-width: 2; transition: transform 160ms var(--ease-out); }
+
+.tip { position: fixed; left: 0; top: 0; visibility: hidden; z-index: 60; pointer-events: none; background: var(--ink); color: #fff; border-radius: 10px; padding: 9px 11px;
+       font-size: 12.5px; line-height: 1.45; min-width: 150px; box-shadow: 0 10px 28px rgba(21, 24, 58, .22);
+       opacity: 0; transform: translateY(4px); transition: opacity 120ms ease, transform 160ms var(--ease-out); font-variant-numeric: tabular-nums; }
+.tip.show { opacity: 1; transform: none; visibility: visible; }
+.tip b { display: block; font-weight: 600; margin-bottom: 3px; }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; color: #D9DAEC; }
+.tip .r em { font-style: normal; color: #fff; }
+.tip .f { margin-top: 4px; color: #FFC98E; }
+
+/* what-if */
+.wi-label { font-size: 13.5px; color: var(--muted); margin: 0 0 12px; }
+.wi-row { display: flex; justify-content: space-between; align-items: baseline; }
+.wi-big { font-size: 38px; font-weight: 550; letter-spacing: -.015em; line-height: 1; color: var(--ink); }
+.wi-big small { font-size: 14px; color: var(--faint); font-weight: 400; margin-left: 3px; letter-spacing: 0; }
+.wi-min { font-size: 15px; font-weight: 600; }
+.wi-cap { font-size: 13px; color: var(--muted); margin-top: 4px; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 10px 0 2px; touch-action: pan-y; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--orange) 0 var(--p, 0%), #E3D8C1 var(--p, 0%) 100%); } /* taste-skill-ignore: a two-tone hard-stop fill for the slider track, not a gradient */
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: #E3D8C1; }
+input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--orange); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 1px 3px rgba(21, 24, 58, .2); transition: transform 140ms var(--ease-out); }
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); }
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.12); }
+.presets { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.preset { height: 30px; padding: 0 11px; border-radius: var(--r-chip); border: 1px solid var(--border); background: var(--surface);
+          font-size: 12.5px; color: var(--ink); transition: transform 140ms var(--ease-out), border-color 150ms ease; }
+.preset b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.preset[aria-pressed="true"] { border-color: var(--ink); }
+@media (hover: hover) and (pointer: fine) { .preset:hover { border-color: var(--control); } }
+.foot-note { font-size: 12.5px; color: var(--faint); margin-top: 12px; line-height: 1.45; }
+
+/* lists */
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows > li { padding: 13px 0; box-shadow: inset 0 1px 0 var(--rule); }
+.rows > li:first-child { box-shadow: none; padding-top: 2px; }
+.rows .t { font-size: 15px; line-height: 1.45; text-wrap: pretty; }
+.rows .m { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.meter { width: 64px; height: 4px; border-radius: 2px; background: #E3D8C1; overflow: hidden; flex: none; }
+.meter i { display: block; height: 100%; background: var(--navy); border-radius: 2px; transform-origin: left; transition: transform 500ms var(--ease-out); }
+.lever { white-space: nowrap; color: #7A3A00; background: #FFE6C7; border-radius: var(--r-chip); padding: 1px 8px; font-weight: 550; }
+.day { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: baseline; }
+.day .dt { font-weight: 600; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+.drifts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13.5px; color: var(--muted); }
+.drifts b { color: var(--ink); font-weight: 550; font-variant-numeric: tabular-nums; }
+.drifts .arrow { color: var(--rust); font-weight: 700; }
+.empty { padding: 14px 16px; border: 1px dashed var(--control); border-radius: 10px; font-size: 14px; color: var(--muted); }
+.err { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; background: var(--pill-neg-bg); color: var(--pill-neg-ink); font-size: 14px; margin-bottom: 16px; }
+
+/* skeleton: final layout, flat bars at real size, no shimmer */
+.sk { color: transparent !important; background: var(--panel-2); border-radius: 6px; user-select: none; }
+.sk * { visibility: hidden; }
+.skline { height: 14px; border-radius: 6px; background: var(--panel-2); margin: 8px 0; }
+
+/* ---------- Patterns ---------- */
+.tabs { display: flex; gap: 2px; padding: 3px; background: var(--panel-2); border-radius: var(--r-chip); overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { height: 30px; padding: 0 13px; border: 0; border-radius: var(--r-chip); background: transparent; font-size: 13px; color: var(--muted); white-space: nowrap;
+               transition: background-color 150ms ease, color 150ms ease; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(21, 24, 58, .08); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 500; font-size: 12.5px; color: var(--muted); padding: 0 10px 8px 0; }
+td { padding: 11px 10px 11px 0; box-shadow: inset 0 1px 0 var(--rule); vertical-align: top; line-height: 1.45; }
+th.n, td.n { text-align: right; white-space: nowrap; }
+th:last-child, td:last-child { padding-right: 0; }
+.filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { height: 30px; padding: 0 12px; border-radius: var(--r-chip); border: 1px solid var(--border); background: var(--surface); font-size: 13px;
+        color: var(--ink); transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease; white-space: nowrap; }
+.chip .c { color: var(--faint); margin-left: 5px; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.chip[aria-pressed="true"] .c { color: #C9CBE6; }
+@media (hover: hover) and (pointer: fine) { .chip:not([aria-pressed="true"]):hover { border-color: var(--control); } }
+.search { position: relative; margin-left: auto; }
+.search input { height: 34px; width: 220px; padding: 0 12px 0 32px; border-radius: var(--r-chip); border: 1px solid var(--control); background: var(--surface); font-size: 14px; }
+.search input::placeholder { color: var(--faint); }
+.search svg { position: absolute; left: 11px; top: 10px; width: 14px; height: 14px; color: var(--faint); }
+
+/* ---------- Privacy ---------- */
+.vault h3 { margin: 4px 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.vault h3 + .rows { margin-bottom: 14px; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.toggle-row .t { font-weight: 550; font-size: 14.5px; }
+.toggle-row .x { font-size: 13px; color: var(--muted); margin-top: 1px; line-height: 1.4; }
+.switch { position: relative; width: 40px; height: 24px; flex: none; border-radius: 12px; border: 0; background: #D9CDB4; padding: 0;
+          transition: background-color 200ms ease; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+                 box-shadow: 0 1px 2px rgba(21, 24, 58, .25); transition: transform 220ms var(--ease-out); }
+.switch[aria-checked="true"] { background: var(--navy); }
+.switch[aria-checked="true"]::after { transform: translateX(16px); }
+.switch:disabled { opacity: .5; }
+.switch:active::after { width: 21px; }
+.switch[aria-checked="true"]:active::after { transform: translateX(13px); }
+.gate-state { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.gate-state .ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--panel); color: var(--rust); }
+.gate-state b { display: block; font-size: 15px; }
+.gate-state span { font-size: 13.5px; color: var(--muted); }
+.facts { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 4px 16px; }
+.facts .rows > li { display: grid; grid-template-columns: minmax(130px, 34%) 1fr; gap: 14px; padding: 9px 0; font-size: 14px; }
+.facts .rows > li:first-child { padding-top: 9px; }
+.facts .k { color: var(--muted); }
+.facts .k code { font-family: inherit; font-size: 11.5px; color: var(--faint); display: block; }
+.facts .v { font-variant-numeric: tabular-nums; text-wrap: pretty; }
+.facts .v ul { margin: 0; padding-left: 16px; }
+pre.json { margin: 0; padding: 14px 16px; max-height: 420px; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+           font: 12.5px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--navy); white-space: pre-wrap; }
+.allow { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.allow li { font-size: 13px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); }
+.never { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+.never b { color: var(--ink); font-weight: 550; }
+.log li.e { display: block; }
+.log li { display: grid; grid-template-columns: 74px 1fr; gap: 12px; font-size: 14px; }
+.log .tm { color: var(--faint); font-variant-numeric: tabular-nums; }
+.log li.fresh { animation: rise 280ms var(--ease-out) both; }
+
+/* ---------- Ask ---------- */
+.convo { display: flex; flex-direction: column; min-height: 420px; }
+.convo .chips { margin-top: auto; }
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; height: 46px; padding: 0 16px; border-radius: var(--r-chip); border: 1px solid var(--control); background: var(--surface); font-size: 16px; }
+.composer input::placeholder { color: var(--faint); }
+.composer .btn { height: 46px; padding: 0 20px; }
+.thread { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.thread li { animation: rise 280ms var(--ease-out) both; }
+.thread .q { font-weight: 600; font-size: 16px; display: flex; gap: 10px; align-items: baseline; }
+.thread .a { margin-top: 6px; font-size: 16px; line-height: 1.6; max-width: 70ch; text-wrap: pretty; }
+.thread .a.pending { color: var(--faint); }
+.thread .src { margin-top: 8px; }
+.ctx li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 9px 0; }
+.ctx li:first-child { padding-top: 2px; }
+.ctx .k { color: var(--muted); }
+.ctx .v { font-variant-numeric: tabular-nums; font-weight: 550; text-align: right; }
+.ask-empty { color: var(--muted); font-size: 15px; margin: 0 0 18px; }
+
+footer.disc { max-width: 1100px; margin: 34px auto 0; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); }
+
+/* ---------- toasts ---------- */
+.toasts { position: fixed; right: 20px; bottom: 20px; z-index: 70; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; gap: 10px; align-items: flex-start; max-width: 360px; padding: 12px 14px; border-radius: 12px;
+         background: var(--ink); color: #fff; font-size: 14px; line-height: 1.4; box-shadow: 0 12px 32px rgba(21, 24, 58, .24);
+         transition: transform 260ms var(--ease-out), opacity 220ms ease; }
+.toast[data-state="enter"] { transform: translateY(12px) scale(.98); opacity: 0; }
+.toast[data-state="exit"] { transform: translateY(6px); opacity: 0; transition-duration: 160ms; }
+.toast .ti { flex: none; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--orange); }
+.toast.ok .ti { background: #6FD49B; } .toast.warn .ti { background: #FF8B5C; }
+.toast small { display: block; color: #C9CBE6; font-size: 12.5px; margin-top: 2px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1180px) {
+  main { padding: 30px 28px 36px; }
+  .s9 { grid-column: span 8; } .s3 { grid-column: span 4; }
+}
+@media (max-width: 1080px) {
+  .side { width: min(320px, 86vw); transform: translateX(-102%); transition: transform 300ms var(--ease-drawer); border-right: 0; visibility: hidden; }
+  body.menu .side { transform: none; visibility: visible; box-shadow: 12px 0 32px rgba(21, 24, 58, .14); }
+  body.closing .side { visibility: visible; }
+  body.menu .scrim { opacity: 1; pointer-events: auto; }
+  .mbar { display: flex; }
+  main { margin-left: 0; padding: 22px 24px 32px; }
+  .s9, .s8, .s3, .s4 { grid-column: span 12; }
+  .s7, .s5 { grid-column: span 12; }
+  .wi-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+}
+@media (max-width: 760px) {
+  .s6 { grid-column: span 12; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi:nth-child(3) { box-shadow: inset 0 1px 0 var(--rule); }
+  .kpi:nth-child(4) { box-shadow: inset 1px 0 0 var(--rule), inset 0 1px 0 var(--rule); }
+  .wi-wrap { display: block; }
+  .search { margin-left: 0; width: 100%; } .search input { width: 100%; }
+}
+@media (max-width: 560px) {
+  main { padding: 18px 16px 28px; }
+  .grid { gap: 12px; }
+  h1 { font-size: 24px; }
+  .title-row { margin-bottom: 16px; flex-wrap: wrap; }
+  .panel { padding: 16px; border-radius: 14px; }
+  .brief { grid-template-columns: 1fr; }
+  .brief p { font-size: 16.5px; }
+  .brief .actions { flex-direction: row; align-items: center; justify-content: flex-start; flex-wrap: wrap; }
+  .brief .msg { text-align: left; }
+  .kpi { padding: 14px 16px; }
+  .kpi b { font-size: 22px; } .kpi.lead b { font-size: 32px; }
+  .day { grid-template-columns: 1fr; gap: 2px; }
+  .facts .rows > li { grid-template-columns: 1fr; gap: 2px; }
+  .card { padding: 10px 8px 4px; }
+  /* tables become two-line rows */
+  table.stack thead { display: none; }
+  table.stack tr { display: block; padding: 11px 0; box-shadow: inset 0 1px 0 var(--rule); }
+  table.stack td { display: inline; padding: 0; box-shadow: none; }
+  table.stack td:first-child { display: block; margin-bottom: 4px; }
+  table.stack td.n { font-size: 12.5px; color: var(--muted); margin-right: 10px; }
+  table.stack td.n::before { content: attr(data-l) " "; }
+  .toasts { left: 16px; right: 16px; bottom: 16px; align-items: stretch; }
+  .toast { max-width: none; }
+  .composer .btn { padding: 0 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+  .view.enter .grid > *, .view.enter .title-row { animation: fade 180ms ease both !important; }
+  @keyframes fade { from { opacity: 0; } }
+}
 </style>
 </head>
 <body>
-<header>
-  <h1>Intro<span>spect</span> <small>· private health twin (prototype v0.1)</small></h1>
-  <div class="row"><span class="pill" id="bedrock">Bedrock: …</span><small id="health">connecting…</small></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-today" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-patterns" viewBox="0 0 20 20"><path d="M3 15.5 7.5 10l3.5 3 6-7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 4v12.5h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-privacy" viewBox="0 0 20 20"><rect x="4.25" y="8.75" width="11.5" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 8.75V6.5a3 3 0 0 1 6 0v2.25" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-ask" viewBox="0 0 20 20"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h7A2.5 2.5 0 0 1 16 5.5v5a2.5 2.5 0 0 1-2.5 2.5H9l-3.5 3v-3h0A1.5 1.5 0 0 1 4 11.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M4.5 2.8v10.4L13 8z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" rx="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 20 20"><rect x="4.25" y="8.75" width="11.5" height="8" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 8.75V6.5a3 3 0 0 1 6 0v2.25" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-mark" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#1B1F6B" stroke-width="2.2"/><path d="M5 13h3.5l2-5 3 9 2-4H19" fill="none" stroke="#FD9B36" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<aside class="side" id="side" aria-label="Main">
+  <div class="brand"><svg width="26" height="26" aria-hidden="true"><use href="#i-mark"/></svg><b>Introspect</b></div>
+  <div class="scope"><strong>Your private health twin</strong><span id="scope-line">On this device · loading data…</span></div>
+  <nav class="primary">
+    <a href="#today" data-view="today"><svg aria-hidden="true"><use href="#i-today"/></svg>Today</a>
+    <a href="#patterns" data-view="patterns"><svg aria-hidden="true"><use href="#i-patterns"/></svg>Patterns</a>
+    <a href="#privacy" data-view="privacy"><svg aria-hidden="true"><use href="#i-privacy"/></svg>Privacy</a>
+    <a href="#ask" data-view="ask"><svg aria-hidden="true"><use href="#i-ask"/></svg>Ask your data</a>
+  </nav>
+  <div class="group-label" id="sim-label">Simulate a synthetic user</div>
+  <div class="seg" role="group" aria-labelledby="sim-label">
+    <button data-scenario="default" aria-pressed="false">Sample</button>
+    <button data-scenario="normal" aria-pressed="false">Normal</button>
+    <button data-scenario="exam_week" aria-pressed="false">Exam week</button>
+    <button data-scenario="bad_night" aria-pressed="false">Bad night</button>
+  </div>
+  <div class="side-note" id="sim-note" aria-live="polite">Swaps the data and reruns every model.</div>
+  <button class="textbtn" id="reset" title="Default consent and the default sample data">Reset demo</button>
+  <div class="side-foot">
+    <div class="stat-row"><span class="dot" id="d-bedrock"></span><span id="s-bedrock">Bedrock · checking</span></div>
+    <div class="stat-row"><span class="dot" id="d-voice"></span><span id="s-voice">Voice · checking</span></div>
+    <div class="stat-row"><span class="dot" id="d-api"></span><span id="s-api">Local API · connecting</span></div>
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<header class="mbar">
+  <svg width="24" height="24" aria-hidden="true"><use href="#i-mark"/></svg><b>Introspect</b><span class="where" id="m-where">· Today</span>
+  <button class="iconbtn" id="menu" aria-label="Open menu" aria-expanded="false" aria-controls="side">
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
 </header>
-<main>
-  <section class="card">
-    <h2>Readiness today</h2>
-    <div class="big" id="readiness">–</div>
-    <div class="muted">50 = your personal normal · 7-day avg <b id="r7">–</b></div>
-    <h2 style="margin-top:16px">Simulate <span class="tag" id="scenario">sample data</span></h2>
-    <div class="row sim">
-      <button data-scenario="normal">Normal</button>
-      <button data-scenario="exam_week">Exam week</button>
-      <button data-scenario="bad_night">Bad night</button>
-    </div>
-    <div class="muted" style="margin-top:6px">Swaps in a synthetic user and reruns every model live.</div>
-  </section>
-  <section class="card span2">
-    <h2>Daily brief <span class="tag" id="briefsrc"></span></h2>
-    <div class="brief" id="brief">Loading…</div>
-    <div class="row" style="margin-top:10px"><button id="play">▶ Play brief (device voice · ElevenLabs when key set)</button><span class="muted" id="playmsg"></span></div>
-  </section>
 
-  <section class="card span2">
-    <h2>Readiness vs your baseline</h2>
-    <canvas id="rchart"></canvas>
-  </section>
-  <section class="card">
-    <h2>What-if: tonight's screen time</h2>
-    <div class="muted">Minutes on your phone after 11 pm tonight</div>
-    <input type="range" id="screen" min="0" max="180" step="10" value="60">
-    <div class="row"><b id="screenval">60 min</b><span class="muted">→ tomorrow's readiness</span></div>
-    <div class="big" id="whatif" style="margin-top:6px">–</div>
-    <div class="muted" id="evalnote" style="margin-top:8px"></div>
-  </section>
+<main id="main">
+  <div class="col">
+    <div id="err"></div>
 
-  <section class="card">
-    <h2>Why: what moves your numbers</h2>
-    <ul class="ins" id="insights"></ul>
-  </section>
-  <section class="card">
-    <h2>Late screen time vs sleep</h2>
-    <canvas id="schart"></canvas>
-  </section>
-  <section class="card">
-    <h2>Flagged days</h2>
-    <ul class="ins" id="anoms"></ul>
-  </section>
+    <!-- ================= TODAY ================= -->
+    <section class="view" id="v-today" aria-labelledby="greet">
+      <div class="title-row">
+        <div>
+          <h1 id="greet"><span class="sk">Good morning. Readiness is 60, above your normal.</span></h1>
+          <p class="sub" id="dateline"><span class="sk">Monday 23 November · 60 days of data</span></p>
+        </div>
+      </div>
+      <div class="grid">
+        <section class="panel s12 brief" aria-label="Daily brief">
+          <div>
+            <div class="panel-head" style="margin-bottom:10px;justify-content:flex-start"><h2>Your brief</h2><span class="tag" id="briefsrc">on-device</span></div>
+            <p id="brief"><span class="skline" style="width:92%"></span><span class="skline" style="width:70%"></span></p>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="play"><svg aria-hidden="true"><use href="#i-play"/></svg><span>Play brief</span></button>
+            <div class="msg" id="playmsg">Device voice · ElevenLabs when a key is set</div>
+          </div>
+        </section>
 
-  <section class="card">
-    <h2>Consent vault</h2>
-    <div id="consent"></div>
-    <div class="muted" style="margin-top:6px">Every cloud purpose is off by default.</div>
-  </section>
-  <section class="card span2">
-    <h2>What leaves this device <span class="tag">purpose: cloud narration</span></h2>
-    <div id="gateway"></div>
-    <div class="muted" style="margin-top:6px">Raw data never leaves the device. The privacy gateway releases only these
-      allow-listed aggregates (no dates, no ids, no raw series), and only with consent.</div>
-  </section>
-  <section class="card span3">
-    <h2>Ask your data <span class="tag" id="asksrc">on-device</span></h2>
-    <div class="row">
-      <input id="q" type="text" maxlength="300" placeholder="Ask about your sleep, readiness, tomorrow…" autocomplete="off">
-      <button id="askbtn">Ask</button>
-    </div>
-    <div class="row chips" style="margin-top:8px">
-      <button class="chip">Why am I tired?</button>
-      <button class="chip">How will tomorrow be?</button>
-      <button class="chip">What should I change?</button>
-    </div>
-    <div class="brief" id="answer" style="margin-top:12px"></div>
-    <div class="muted" style="margin-top:6px">Answers come only from the privacy-gateway facts above, never from raw data.</div>
-  </section>
+        <section class="panel s12 kpis" aria-label="Key numbers">
+          <div class="kpi lead"><div class="l">Readiness today</div><b class="num" id="k-r"><span class="sk">60</span></b><div class="d" id="k-rd">50 is your normal</div></div>
+          <div class="kpi"><div class="l">7-day average</div><b class="num" id="k-7"><span class="sk">51</span></b><div class="d" id="k-7d">readiness, last 7 days</div></div>
+          <div class="kpi"><div class="l">Tomorrow, usual night</div><b class="num" id="k-t"><span class="sk">50</span></b><div class="d" id="k-td">LightGBM forecast</div></div>
+          <div class="kpi"><div class="l">Sleep, 7-day average</div><b class="num" id="k-s"><span class="sk">6 h 46 m</span></b><div class="d" id="k-sd">your normal –</div></div>
+        </section>
+
+        <section class="panel s9 fill" aria-labelledby="h-rchart">
+          <div class="panel-head">
+            <h2 id="h-rchart">Readiness against your own baseline</h2>
+            <div class="legend" id="r-legend"></div>
+          </div>
+          <div class="card"><div class="chart" id="rchart"></div></div>
+          <p class="foot-note" id="r-note">Robust z-scores against your previous 28 days. Flagged days drifted from your baseline or were an unusual combination (Isolation Forest).</p>
+        </section>
+
+        <section class="panel s3" aria-labelledby="h-wi">
+          <div class="panel-head" style="margin-bottom:6px"><h2 id="h-wi">What if, tonight</h2></div>
+          <div class="wi-wrap">
+            <div>
+              <p class="wi-label">Minutes on your phone after 11 pm</p>
+              <div class="wi-row"><span class="wi-min num" id="screenval">– min</span><span class="wi-cap">drag to try</span></div>
+              <input type="range" id="screen" min="0" max="180" step="10" value="40" aria-label="Minutes of screen time after 11 pm tonight" aria-describedby="whatif-cap">
+              <div style="margin-top:12px"><div class="wi-big num" id="whatif">–<small>/100</small></div>
+                <div class="wi-cap" id="whatif-cap">tomorrow's readiness</div></div>
+            </div>
+            <div>
+              <div class="chart" id="wchart" style="height:118px;margin-top:14px"></div>
+              <div class="presets" id="presets">
+                <button class="preset" data-min="0">Off by 11 · <b data-v="0">–</b></button>
+                <button class="preset" data-min="120">2 hours · <b data-v="120">–</b></button>
+              </div>
+              <p class="foot-note" id="evalnote"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel s6" aria-labelledby="h-why">
+          <div class="panel-head"><h2 id="h-why">What moves your numbers</h2><a class="link" href="#patterns">All patterns <span>→</span></a></div>
+          <ul class="rows" id="insights"><li><div class="skline" style="width:90%"></div><div class="skline" style="width:40%"></div></li></ul>
+        </section>
+
+        <section class="panel s6" aria-labelledby="h-flag">
+          <div class="panel-head"><h2 id="h-flag">Flagged days</h2><span class="meta" id="flag-meta"></span></div>
+          <ul class="rows" id="anoms"><li><div class="skline" style="width:80%"></div></li></ul>
+          <div style="margin-top:10px"><a class="link" href="#patterns" data-focus="flagged">View all flagged days <span>→</span></a></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= PATTERNS ================= -->
+    <section class="view" id="v-patterns" aria-labelledby="h-pat">
+      <div class="title-row">
+        <div>
+          <h1 id="h-pat">Patterns in your data</h1>
+          <p class="sub" id="pat-sub">Lagged Spearman correlation. Shown only when |ρ| ≥ 0.3 and p &lt; 0.05, so cause comes before effect.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <section class="panel s12" aria-labelledby="h-metric">
+          <div class="panel-head">
+            <h2 id="h-metric">Every day, one signal at a time</h2>
+            <div class="tabs" role="tablist" id="mtabs" aria-label="Signal"></div>
+          </div>
+          <div class="card"><div class="chart" id="mchart" style="height:250px"></div></div>
+          <div class="legend" id="m-legend" style="margin-top:12px"></div>
+        </section>
+
+        <section class="panel s7" aria-labelledby="h-drivers">
+          <div class="panel-head"><h2 id="h-drivers">Drivers, ranked</h2><span class="meta">actionable first</span></div>
+          <table>
+            <thead><tr><th>Pattern</th><th class="n">ρ</th><th class="n">p</th><th class="n">Days</th></tr></thead>
+            <tbody id="drivers"></tbody>
+          </table>
+          <p class="foot-note">ρ is the rank correlation between a driver and the outcome the next day: −1 to +1, 0 means no link. p is the chance of seeing a link this strong by luck. These are patterns in your own data, not causes. The next step is an n-of-1 test: screens off by 11 for a week, then compare.</p>
+        </section>
+
+        <section class="panel s5" aria-labelledby="h-scatter">
+          <div class="panel-head"><h2 id="h-scatter">Late screens against sleep</h2><span class="meta" id="sc-meta"></span></div>
+          <div class="chart" id="schart" style="height:250px"></div>
+          <div class="legend" style="margin-top:8px"><span><i class="sw" style="width:8px;height:8px;border-radius:50%;background:var(--navy);opacity:.55"></i>a night</span><span><i class="sw flag"></i>a flagged day</span></div>
+        </section>
+
+        <section class="panel s12" aria-labelledby="h-allflag" id="flagged">
+          <div class="panel-head"><h2 id="h-allflag">Flagged days</h2><span class="meta" id="af-meta"></span></div>
+          <div class="filters">
+            <div class="chips" id="fchips" role="group" aria-label="Filter by signal"></div>
+            <label class="search"><span class="sr">Search flagged days</span><svg aria-hidden="true"><use href="#i-search"/></svg>
+              <input id="fsearch" type="search" placeholder="Search a date or signal" autocomplete="off"></label>
+          </div>
+          <table class="stack">
+            <thead><tr><th>Day</th><th>What drifted from your normal</th><th class="n">Anomaly score</th></tr></thead>
+            <tbody id="flagrows"></tbody>
+          </table>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= PRIVACY ================= -->
+    <section class="view" id="v-privacy" aria-labelledby="h-priv">
+      <div class="title-row">
+        <div>
+          <h1 id="h-priv">Nothing leaves without your yes</h1>
+          <p class="sub">Raw data stays on this device. Each cloud purpose is off until you switch it on.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <section class="panel s5 vault" aria-labelledby="h-vault">
+          <div class="panel-head"><h2 id="h-vault">Consent vault</h2><span class="meta" id="vault-meta"></span></div>
+          <h3>Purposes that would use the cloud</h3>
+          <ul class="rows" id="purposes"></ul>
+          <h3>Sources read on this device</h3>
+          <ul class="rows" id="sources"></ul>
+        </section>
+        <section class="panel s7" aria-labelledby="h-gate">
+          <div class="panel-head">
+            <h2 id="h-gate">What leaves this device</h2>
+            <div class="tabs" role="tablist" id="gtabs" aria-label="View">
+              <button role="tab" aria-selected="true" data-g="fields">Fields</button>
+              <button role="tab" aria-selected="false" data-g="json">Exact JSON</button>
+            </div>
+          </div>
+          <p class="sub" style="margin:-6px 0 14px;font-size:13.5px">Purpose: cloud narration (Bedrock, Claude Haiku). The privacy gateway releases only allow-listed aggregates.</p>
+          <div id="gateway"></div>
+          <p class="never"><b>Never sent:</b> daily series, exact dates, user or device ids. Any cloud sentence with a number that isn't in these facts is rejected.</p>
+        </section>
+        <section class="panel s12" aria-labelledby="h-log">
+          <div class="panel-head"><h2 id="h-log">This session</h2><span class="meta">consent changes and gateway releases, newest first</span></div>
+          <ul class="rows log" id="log"></ul>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= ASK ================= -->
+    <section class="view" id="v-ask" aria-labelledby="h-ask">
+      <div class="title-row">
+        <div>
+          <h1 id="h-ask">Ask your data</h1>
+          <p class="sub">Answers come only from the privacy-gateway facts, never from raw data. <span class="tag" id="asksrc">on-device</span></p>
+        </div>
+      </div>
+      <div class="grid">
+        <section class="panel s8 convo" aria-label="Conversation">
+          <ol class="thread" id="thread" aria-live="polite"></ol>
+          <p class="ask-empty" id="ask-empty">Try one of these, or ask about sleep, readiness, tomorrow or steps.</p>
+          <div class="chips" id="askchips" style="margin-bottom:14px">
+            <button class="chip">Why am I tired?</button>
+            <button class="chip">How will tomorrow be?</button>
+            <button class="chip">What should I change?</button>
+          </div>
+          <form class="composer" id="askform" autocomplete="off">
+            <label class="sr" for="q">Question</label>
+            <input id="q" type="text" maxlength="300" placeholder="Ask about your sleep, readiness, tomorrow…" enterkeyhint="send">
+            <button class="btn primary" id="askbtn" type="submit">Ask</button>
+          </form>
+        </section>
+        <section class="panel s4" aria-labelledby="h-ctx">
+          <div class="panel-head"><h2 id="h-ctx">What answers can use</h2></div>
+          <ul class="rows ctx" id="ctx"></ul>
+          <p class="foot-note">The same aggregates the privacy gateway allows. With Bedrock on and cloud narration consented, any answer with a number that isn't here is rejected.</p>
+        </section>
+      </div>
+    </section>
+
+    <footer class="disc"><span>Wellness insights, not medical advice.</span><span id="foot-ver"></span></footer>
+  </div>
 </main>
-<footer>
-  <span class="muted">Wellness insights, not medical advice.</span>
-  <a id="reset" title="Clear demo state: default consent, default sample data">Reset demo</a>
-</footer>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="tip" id="tip" role="presentation"></div>
+
 <script>
+"use strict";
+/* ================= helpers ================= */
 const $ = id => document.getElementById(id);
-const j = (u, o) => fetch(u, o).then(r => r.ok ? r.json() : Promise.reject(r));
-const NAVY = "#1B1F6B", RUST = "#C2410C", ORANGE = "#FD9B36";
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const api = (u, o) => fetch(u, o).then(r => r.ok ? r.json() : Promise.reject(r));
+const post = (u, body) => api(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const round = v => v == null ? null : Math.round(v);
+const dt = iso => new Date(iso + "T12:00:00");
+const fmtDay = (iso, o = { weekday: "short", day: "numeric", month: "short" }) => dt(iso).toLocaleDateString("en-GB", o);
+const fmtMin = m => { if (m == null) return "–"; m = Math.round(m); const h = Math.floor(m / 60), r = m % 60; return h ? `${h} h ${String(r).padStart(2, "0")} m` : `${r} m`; };
+const fmtP = p => p < 0.001 ? "< 0.001" : p < 0.01 ? p.toFixed(3) : p.toFixed(2);
+const fmtRho = r => (r < 0 ? "−" : "+") + Math.abs(r).toFixed(2);
+const nowTime = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const SCEN = { default: "Sample", normal: "Normal", exam_week: "Exam week", bad_night: "Bad night" };
+const PURPOSE = {
+  cloud_narration: ["Cloud narration", "Bedrock writes the brief from the facts on the right."],
+  voice_brief: ["Voice brief", "ElevenLabs reads the brief aloud."],
+  mcp_access: ["Assistant access (MCP)", "Other AI tools can read your daily summary."],
+  cloud_backup: ["Encrypted backup", "S3 with KMS keys."],
+};
+const SOURCE = {
+  wearable: ["Wearable", "Sleep, resting heart rate, HRV, steps."],
+  screen_time: ["Screen time", "Minutes on the phone after 11 pm."],
+  calendar: ["Calendar", "Exam days and busy weeks."],
+  checkins: ["Check-ins", "How you felt, in one tap."],
+};
+const FACT_LABEL = {
+  period_days: "Days analysed", readiness_today: "Readiness today", readiness_7d_avg: "Readiness, 7-day average",
+  readiness_forecast_tomorrow: "Tomorrow, forecast", drift_today: "Drift today", insights: "Patterns",
+  sleep_7d_avg_min: "Sleep, 7-day average (min)", sleep_normal_min: "Sleep, your normal (min)", resting_hr_7d_avg: "Resting HR, 7-day average (bpm)",
+  steps_7d_avg: "Steps, 7-day average", is_exam_week: "Exam week", suggested_action: "Suggested action",
+};
+const metricName = m => ({ "resting heart rate": "Resting HR", HRV: "HRV", sleep: "Sleep", steps: "Steps" }[m] || (m[0].toUpperCase() + m.slice(1)));
+const driftVal = (d, v) => d.unit === "min" ? fmtMin(v) : `${Math.round(v).toLocaleString("en-GB")} ${d.unit}`;
 
-const charts = {};
-const SCEN_LABEL = { default: "sample data", normal: "normal", exam_week: "exam week", bad_night: "bad night" };
+/* ================= state ================= */
+const S = { health: {}, tl: [], ins: [], an: [], brief: null, facts: null, scen: "default", curve: null, fc: null,
+            consent: null, log: [], metric: "readiness", filter: "all", query: "", thread: [], gview: "fields", gfacts: null,
+            view: "today", loaded: false, newFlags: new Set(), animateLine: true };
 
-let health = {};
-async function load() {
-  const h = health = await j("/api/health");
-  $("health").textContent = `API v${h.version} · ElevenLabs ${h.elevenlabs ? "on" : "off (device voice)"}`;
-  await renderConsent();
-  await render();
+/* ================= toasts ================= */
+function toast(msg, sub = "", kind = "") {
+  const box = $("toasts");
+  while (box.children.length >= 3) box.firstElementChild.remove();
+  const t = document.createElement("div");
+  t.className = `toast ${kind}`; t.dataset.state = "enter"; t.setAttribute("role", "status");
+  t.innerHTML = `<span class="ti"></span><div>${esc(msg)}${sub ? `<small>${esc(sub)}</small>` : ""}</div>`;
+  box.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.dataset.state = "shown"));
+  let left = 3600, start = Date.now(), timer;
+  const close = () => { t.dataset.state = "exit"; setTimeout(() => t.remove(), 180); };
+  const arm = () => { start = Date.now(); timer = setTimeout(close, left); };
+  t.onmouseenter = () => { clearTimeout(timer); left -= Date.now() - start; };
+  t.onmouseleave = arm; t.onclick = close;
+  arm();
 }
 
-function chart(id, cfg) {               // destroy the old Chart instance before drawing a new one
-  if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart($(id), cfg);
+/* ================= number tween ================= */
+function setNum(el, to, suffix = "") {
+  if (to == null) { el.textContent = "–"; return; }
+  const from = parseFloat(el.dataset.v);
+  el.dataset.v = to;
+  if (isNaN(from) || from === to || reduced()) { el.innerHTML = `${to}${suffix}`; return; }
+  const t0 = performance.now(), dur = 520;
+  const step = t => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+    el.innerHTML = `${Math.round(from + (to - from) * e)}${suffix}`; if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
 }
 
-async function render() {
-  const [tl, ins, an, br, sc] = await Promise.all([j("/api/timeline"), j("/api/insights"), j("/api/anomalies"),
-                                                   j("/api/brief"), j("/api/demo/scenario")]);
-  $("readiness").textContent = Math.round(br.facts.readiness_today);
-  $("r7").textContent = Math.round(br.facts.readiness_7d_avg);
-  stopVoice();
-  $("answer").textContent = "";
-  showBrief(br.brief);
-  $("scenario").textContent = SCEN_LABEL[sc.scenario] || sc.scenario;
-  document.querySelectorAll(".sim button").forEach(b => b.classList.toggle("on", b.dataset.scenario === sc.scenario));
+/* ================= SVG charts (no library: tight control of type, colour and motion) ================= */
+function niceScale(lo, hi, count = 4) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+  const min = Math.floor(lo / step) * step, max = Math.ceil(hi / step) * step, ticks = [];
+  for (let v = min; v <= max + step / 2; v += step) ticks.push(+v.toFixed(6));
+  return { min, max, ticks };
+}
+const tip = $("tip");
+function showTip(html, cx, cy) {
+  tip.innerHTML = html; tip.classList.add("show");
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = cx + 14, y = cy - h - 12;
+  if (x + w > innerWidth - 8) x = cx - w - 14;
+  if (y < 8) y = cy + 16;
+  tip.style.left = `${x}px`; tip.style.top = `${y}px`;
+}
+const hideTip = () => tip.classList.remove("show");
 
-  const labels = tl.map(d => d.date.slice(5));
-  chart("rchart", { type: "line", data: { labels, datasets: [
-      { label: "Readiness", data: tl.map(d => d.readiness), borderColor: NAVY, tension: .3, pointRadius: 0, borderWidth: 2 },
-      { label: "Flagged", data: tl.map(d => d.is_anomaly ? d.readiness : null), showLine: false, pointRadius: 5, pointBackgroundColor: RUST, borderColor: RUST },
-      { label: "Your normal", data: tl.map(() => 50), borderColor: "#B8AE9C", borderDash: [5, 4], pointRadius: 0, borderWidth: 1 } ]},
-    options: { animation: { duration: 400 }, plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100 } } } });
+function lineChart(el, cfg) {
+  el.innerHTML = "";                       // measure the container, not the previous drawing
+  const W = el.clientWidth, H = el.clientHeight || 240;
+  if (!W) return;
+  const narrow = W < 480;
+  const m = { l: 36, r: narrow ? 10 : 18, t: 14, b: 26 };
+  const d = cfg.data, n = d.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const X = i => m.l + (n <= 1 ? iw / 2 : iw * i / (n - 1));
+  const Y = v => m.t + ih * (1 - (v - cfg.min) / (cfg.max - cfg.min));
+  const half = n > 1 ? iw / (n - 1) / 2 : 6;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label)}">`;
+  // shaded bands (exam days)
+  if (cfg.band) { let i = 0; while (i < n) { if (cfg.band(d[i])) { let j = i; while (j + 1 < n && cfg.band(d[j + 1])) j++;
+    s += `<rect x="${Math.max(m.l, X(i) - half)}" y="${m.t}" width="${Math.min(W - m.r, X(j) + half) - Math.max(m.l, X(i) - half)}" height="${ih}" fill="var(--band)"/>`; i = j + 1; } else i++; } }
+  cfg.ticks.forEach(t => { s += `<line class="g" x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tk" x="${m.l - 8}" y="${Y(t) + 4}" text-anchor="end">${cfg.tickFmt ? cfg.tickFmt(t) : t}</text>`; });
+  // baseline: a constant or a series
+  if (cfg.baseline != null) {
+    if (typeof cfg.baseline === "number") s += `<line class="base" x1="${m.l}" x2="${W - m.r}" y1="${Y(cfg.baseline)}" y2="${Y(cfg.baseline)}"/>`;
+    else { const pts = d.map((p, i) => p[cfg.baseline] == null ? null : `${X(i)},${Y(p[cfg.baseline])}`); s += `<path class="base" d="${pathOf(pts)}"/>`; }
+  }
+  // main series, gaps kept as gaps
+  const pts = d.map((p, i) => p[cfg.key] == null ? null : `${X(i).toFixed(1)},${Y(p[cfg.key]).toFixed(1)}`);
+  s += `<path class="ln" id="${el.id}-ln" d="${pathOf(pts)}" pathLength="1"/>`;
+  // x labels
+  const every = Math.max(1, Math.round(n / (narrow ? 3 : 6)));
+  for (let i = 0; i < n; i += every) if (i < n - every / 2) s += `<text class="tk" x="${X(i)}" y="${H - 6}" text-anchor="middle">${fmtDay(d[i].date, { day: "numeric", month: "short" })}</text>`;
+  s += `<text class="tk" x="${X(n - 1)}" y="${H - 6}" text-anchor="end">${fmtDay(d[n - 1].date, { day: "numeric", month: "short" })}</text>`;
+  // flagged points
+  d.forEach((p, i) => { if (p.is_anomaly && p[cfg.key] != null) {
+    const isNew = S.newFlags.has(p.date);
+    if (isNew) s += `<circle class="ring" cx="${X(i)}" cy="${Y(p[cfg.key])}" r="5"/>`;
+    s += `<circle class="flag${isNew ? " new" : ""}" cx="${X(i)}" cy="${Y(p[cfg.key])}" r="4.5"/>`; } });
+  // today
+  const li = n - 1, lv = d[li][cfg.key];
+  if (lv != null && !d[li].is_anomaly) s += `<circle class="today" cx="${X(li)}" cy="${Y(lv)}" r="4.5"/>`;
+  if (lv != null && cfg.todayLabel) s += `<text class="today-l" x="${X(li) - 8}" y="${Y(lv) - 10}" text-anchor="end">${cfg.todayLabel(lv)}</text>`;
+  s += `<line class="cursor" id="${el.id}-cur" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" visibility="hidden"/><circle class="hot" id="${el.id}-hot" r="5" visibility="hidden"/>`;
+  s += `<rect x="${m.l}" y="0" width="${iw}" height="${H}" fill="transparent" id="${el.id}-hit"/></svg>`;
+  el.innerHTML = s;
+  // line draw on new data
+  const ln = $(`${el.id}-ln`);
+  if (cfg.animate && !reduced() && ln.animate) ln.animate([{ strokeDasharray: "1 1", strokeDashoffset: 1 }, { strokeDasharray: "1 1", strokeDashoffset: 0 }],
+                                                     { duration: 900, easing: "cubic-bezier(.77,0,.175,1)" });
+  // hover / touch
+  const hit = $(`${el.id}-hit`), cur = $(`${el.id}-cur`), hot = $(`${el.id}-hot`);
+  const move = e => {
+    const r = hit.getBoundingClientRect(), i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left) / r.width * (n - 1))));
+    const p = d[i]; if (p[cfg.key] == null) return;
+    cur.setAttribute("x1", X(i)); cur.setAttribute("x2", X(i)); cur.setAttribute("visibility", "visible");
+    hot.setAttribute("cx", X(i)); hot.setAttribute("cy", Y(p[cfg.key])); hot.setAttribute("visibility", "visible");
+    showTip(cfg.tip(p), e.clientX, r.top + Y(p[cfg.key]));
+  };
+  const leave = () => { cur.setAttribute("visibility", "hidden"); hot.setAttribute("visibility", "hidden"); hideTip(); };
+  hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move); hit.addEventListener("pointerleave", leave);
+}
+function pathOf(pts) { let s = "", pen = false; pts.forEach(p => { if (p == null) { pen = false; return; } s += (pen ? "L" : "M") + p; pen = true; }); return s; }
 
-  chart("schart", { type: "scatter", data: { datasets: [{ label: "nights",
-      data: tl.filter(d => d.sleep_min != null && d.screen_after_11pm_min != null).map(d => ({ x: d.screen_after_11pm_min, y: d.sleep_min / 60 })),
-      backgroundColor: ORANGE }] },
-    options: { plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "screen after 11 pm (min)" } }, y: { title: { display: true, text: "sleep (h)" } } } } });
-
-  $("insights").innerHTML = ins.map(i => `<li>${i.sentence}<div class="stat">ρ = ${i.rho}, p = ${i.p_value}, ${i.n_days} days</div></li>`).join("") || "<li>Not enough data yet.</li>";
-  $("anoms").innerHTML = an.slice(-5).reverse().map(a => `<li><b>${a.date}</b><div class="stat">${
-      a.drift.map(d => `${d.metric} ${d.value} vs normal ${d.your_normal}`).join(" · ") || "unusual combination (Isolation Forest)"}</div></li>`).join("");
-  const usual = await j("/api/forecast");             // start the slider at this user's usual night
-  if (usual.status === "ok") $("screen").value = Math.round(usual.planned_screen_min / 10) * 10;
-  await Promise.all([whatIf(), renderGateway()]);
+function dayTip(p) {
+  const a = S.an.find(x => x.date === p.date);
+  const rows = [["Readiness", round(p.readiness) ?? "–"], ["Sleep", fmtMin(p.sleep_min)], ["Resting HR", p.resting_hr != null ? `${p.resting_hr} bpm` : "–"],
+                ["HRV", p.hrv != null ? `${p.hrv} ms` : "–"], ["Screens after 11 pm", p.screen_after_11pm_min != null ? `${p.screen_after_11pm_min} min` : "–"]];
+  return `<b>${fmtDay(p.date, { weekday: "short", day: "numeric", month: "short" })}${p.is_exam_day ? " · exam day" : ""}</b>` +
+    rows.map(([k, v]) => `<div class="r"><span>${k}</span><em>${v}</em></div>`).join("") +
+    (a ? `<div class="f">Flagged: ${a.drift.length ? a.drift.map(x => metricName(x.metric)).join(", ") : "unusual combination"}</div>` : "");
 }
 
-document.querySelectorAll(".sim button").forEach(b => b.onclick = async () => {
-  const all = document.querySelectorAll(".sim button");
-  all.forEach(x => x.disabled = true);
-  try {
-    await j("/api/demo/scenario", { method: "POST", headers: { "Content-Type": "application/json" },
-                                   body: JSON.stringify({ scenario: b.dataset.scenario }) });
-    await render();
-  } catch (e) { console.error(e); }
-  finally { all.forEach(x => x.disabled = false); }
-});
+/* ================= data ================= */
+const MINUTES = Array.from({ length: 19 }, (_, i) => i * 10);
+async function loadAll() {
+  const [tl, ins, an, br, sc, fc] = await Promise.all([api("/api/timeline"), api("/api/insights"), api("/api/anomalies"),
+                                                       api("/api/brief"), api("/api/demo/scenario"), api("/api/forecast")]);
+  // the what-if curve: the same forecast endpoint, every 10 minutes, so dragging is instant
+  let curve = null;
+  if (fc.status === "ok") {
+    try { curve = (await Promise.all(MINUTES.map(v => api(`/api/forecast?screen_min=${v}`)))).map(f => f.status === "ok" ? f.tomorrow_readiness : null); }
+    catch (e) { console.error(e); }
+  }
+  Object.assign(S, { tl, ins, an, brief: br.brief, facts: br.facts, scen: sc.scenario, fc, curve, loaded: true });
+}
 
+/* ================= render: shell ================= */
+function renderShell() {
+  const h = S.health, live = S.brief && S.brief.source === "bedrock";
+  $("d-bedrock").className = `dot ${live ? "live" : h.bedrock ? "on" : ""}`;
+  $("s-bedrock").textContent = live ? "Bedrock · live" : h.bedrock ? "Bedrock · waiting for consent" : "Bedrock · off, on-device";
+  $("d-voice").className = `dot ${h.elevenlabs ? "on" : ""}`;
+  $("s-voice").textContent = h.elevenlabs ? "ElevenLabs voice · ready" : "Device voice · offline";
+  $("d-api").className = "dot on";
+  $("s-api").textContent = `Local API v${h.version} · 127.0.0.1`;
+  $("foot-ver").textContent = `Prototype v${h.version} · all models run on this device`;
+  $$(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.scenario === S.scen)));
+  if (S.tl.length) $("scope-line").textContent = `On this device · ${SCEN[S.scen] || S.scen} data, ${S.tl.length} days`;
+}
+
+/* ================= render: today ================= */
+function moodOf(r) { return r > 55 ? "above" : r < 45 ? "below" : "close to"; }   // same thresholds as narrate.py
+function renderToday() {
+  const f = S.facts, tl = S.tl, last = tl[tl.length - 1], r = round(f.readiness_today);
+  $("greet").textContent = r == null ? "Good morning." : `Good morning. Readiness is ${r}, ${moodOf(r)} your normal.`;
+  $("dateline").textContent = `${fmtDay(last.date, { weekday: "long", day: "numeric", month: "long" })} · ${f.period_days} days of data` +
+                              (f.is_exam_week ? " · exam week" : "");
+  showBrief(S.brief);
+
+  setNum($("k-r"), r, "<small>/100</small>");
+  const diff = r == null ? null : r - 50;
+  const kd = $("k-rd");
+  kd.textContent = diff == null ? "–" : diff === 0 ? "exactly your normal (50)" : `${diff > 0 ? "+" : "−"}${Math.abs(diff)} against your normal of 50`;
+  kd.className = `d ${diff > 5 ? "pos" : diff < -5 ? "neg" : ""}`;
+  setNum($("k-7"), round(f.readiness_7d_avg));
+  setNum($("k-t"), round(f.readiness_forecast_tomorrow));
+  $("k-td").textContent = S.fc.status === "ok" ? `if tonight is like usual (${S.fc.planned_screen_min} min of late screens)` : "not enough data to forecast";
+  $("k-s").textContent = fmtMin(f.sleep_7d_avg_min);
+  $("k-sd").textContent = f.sleep_normal_min != null ? `your normal ${fmtMin(f.sleep_normal_min)}` : "–";
+
+  const flagged = tl.filter(d => d.is_anomaly).length, exam = tl.some(d => d.is_exam_day);
+  $("r-legend").innerHTML = `<span><i class="sw line"></i>Readiness</span><span><i class="sw dash"></i>Your normal, 50</span>` +
+    `<span><i class="sw flag"></i>Flagged (${flagged})</span>` + (exam ? `<span><i class="sw band"></i>Exam days</span>` : "");
+
+  // why
+  $("insights").innerHTML = S.ins.slice(0, 3).map((i, k) => `<li><div class="t">${esc(i.sentence)}</div>
+      <div class="m"><span class="meter" aria-hidden="true"><i style="transform:scaleX(${Math.min(1, Math.abs(i.rho))})"></i></span>
+      <span>ρ ${fmtRho(i.rho)} · p ${fmtP(i.p_value)} · ${i.n_days} days</span>${k === 0 && i.driver.startsWith("screen") ? `<span class="lever">your biggest lever</span>` : ""}</div></li>`).join("")
+    || `<li><div class="empty">Not enough data yet for a pattern that passes |ρ| ≥ 0.3 and p &lt; 0.05.</div></li>`;
+
+  // flagged
+  $("flag-meta").textContent = `${flagged} of ${tl.length} days`;
+  $("anoms").innerHTML = S.an.slice(-4).reverse().map(a => `<li class="day"><span class="dt">${fmtDay(a.date)}</span>${driftHtml(a)}</li>`).join("")
+    || `<li><div class="empty">No day drifted from your baseline in this data.</div></li>`;
+
+  // what-if
+  $("evalnote").textContent = S.fc.status === "ok"
+    ? `LightGBM, monotonic in screen time. Backtest error ${S.fc.eval.test_mae} points (tomorrow = today: ${S.fc.eval.persistence_mae}).` : "";
+  if (S.fc.status === "ok") $("screen").value = Math.round(S.fc.planned_screen_min / 10) * 10;
+  $$("#presets b").forEach(b => { const v = curveAt(+b.dataset.v); b.textContent = v == null ? "–" : Math.round(v); });
+  whatIf(false);
+}
+function driftHtml(a) {
+  if (!a.drift.length) return `<div class="drifts"><span>Unusual combination of signals <span style="color:var(--faint)">(Isolation Forest)</span></span></div>`;
+  return `<div class="drifts">${a.drift.map(d => `<span>${metricName(d.metric)} <b>${driftVal(d, d.value)}</b> <span class="arrow" aria-hidden="true">${d.robust_z < 0 ? "↓" : "↑"}</span> vs ${driftVal(d, d.your_normal)}</span>`).join("")}</div>`;
+}
 function showBrief(b) {
-  $("brief").textContent = b.text;
-  $("briefsrc").textContent = b.source;
-  const live = b.source === "bedrock";
-  $("bedrock").classList.toggle("live", live);
-  $("bedrock").textContent = live ? "Bedrock: live" : health.bedrock ? "Bedrock: on-device until consent" : "Bedrock: off (on-device)";
+  if (!b) return;
+  // the greeting above already says the first sentence, so the panel starts with what's new; the voice reads it all
+  const shown = b.source === "bedrock" ? b.text : b.text.replace(/^Good morning\. Your readiness today is \d+, (above|below|close to) your normal\.\s*/, "");
+  $("brief").textContent = shown || b.text;
+  $("briefsrc").textContent = b.source === "bedrock" ? "Bedrock · Claude Haiku" : "on-device";
+  $("briefsrc").className = `tag ${b.source === "bedrock" ? "live" : ""}`;
+  renderShell();
+}
+const curveAt = v => S.curve ? S.curve[Math.round(v / 10)] : null;
+
+let wiSeq = 0;
+async function whatIf(fromUser = true) {
+  const el = $("screen"), v = +el.value;
+  el.style.setProperty("--p", `${v / 180 * 100}%`);
+  $("screenval").textContent = `${v} min`;
+  $$("#presets .preset").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.min === v)));
+  let y = curveAt(v);
+  if (y == null && S.fc && S.fc.status === "ok") {           // no cached curve: ask the model directly
+    const seq = ++wiSeq; const f = await api(`/api/forecast?screen_min=${v}`); if (seq !== wiSeq) return; y = f.tomorrow_readiness;
+  }
+  if (y == null) { $("whatif").innerHTML = "–"; return; }
+  const big = $("whatif");
+  if (fromUser) { big.dataset.v = Math.round(y); big.innerHTML = `${Math.round(y)}<small>/100</small>`; }
+  else setNum(big, Math.round(y), "<small>/100</small>");
+  $("whatif-cap").textContent = `tomorrow's readiness, ${moodOf(Math.round(y))} your normal`;
+  drawCurve(v);
+}
+function drawCurve(v) {
+  const el = $("wchart"); el.innerHTML = ""; if (!S.curve || !el.clientWidth) return;
+  const W = el.clientWidth, H = el.clientHeight, m = { l: 26, r: 8, t: 10, b: 20 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const vals = S.curve.filter(x => x != null), sc = niceScale(Math.min(...vals) - 2, Math.max(...vals) + 2, 2);
+  const X = mm => m.l + iw * mm / 180, Y = y => m.t + ih * (1 - (y - sc.min) / (sc.max - sc.min));
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="Tomorrow's readiness for each amount of late screen time tonight">`;
+  sc.ticks.forEach(t => s += `<line class="g" x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tk" x="${m.l - 6}" y="${Y(t) + 4}" text-anchor="end">${t}</text>`);
+  [0, 60, 120, 180].forEach(t => s += `<text class="tk" x="${X(t)}" y="${H - 4}" text-anchor="${t === 0 ? "start" : t === 180 ? "end" : "middle"}">${t === 180 ? "180 min" : t}</text>`);
+  if (S.fc.status === "ok") { const u = S.fc.planned_screen_min; s += `<line class="marker" x1="${X(u)}" x2="${X(u)}" y1="${m.t}" y2="${m.t + ih}"/>`; }
+  s += `<path class="ln fc" d="${pathOf(S.curve.map((y, i) => y == null ? null : `${X(i * 10).toFixed(1)},${Y(y).toFixed(1)}`))}"/>`;
+  const y = curveAt(v); if (y != null) s += `<circle class="knob" cx="${X(v)}" cy="${Y(y)}" r="5"/>`;
+  el.innerHTML = s + "</svg>";
 }
 
-let whatIfSeq = 0;
-async function whatIf() {
-  const v = $("screen").value; $("screenval").textContent = `${v} min`;
-  const seq = ++whatIfSeq;
-  const f = await j(`/api/forecast?screen_min=${v}`);
-  if (seq !== whatIfSeq) return;                      // a newer slider value is already on its way
-  if (f.status !== "ok") { $("whatif").textContent = "–"; return; }
-  $("whatif").textContent = Math.round(f.tomorrow_readiness);
-  $("evalnote").textContent = `${f.model} · backtest MAE ${f.eval.test_mae} vs ${f.eval.persistence_mae} (persistence)`;
-}
+/* ================= render: patterns ================= */
+const METRICS = [
+  { id: "readiness", label: "Readiness", key: "readiness", fixed: [0, 100], ticks: [0, 25, 50, 75, 100], baseline: 50, base: "Your normal, 50", fmt: v => round(v) },
+  { id: "sleep", label: "Sleep", key: "sleep_min", baseline: "sleep_min_baseline", base: "Your sleep baseline", tick: t => `${Math.round(t / 60 * 10) / 10} h`, fmt: fmtMin },
+  { id: "rhr", label: "Resting HR", key: "resting_hr", tick: t => t, fmt: v => `${v} bpm`, unit: "bpm" },
+  { id: "hrv", label: "HRV", key: "hrv", tick: t => t, fmt: v => `${v} ms`, unit: "ms" },
+  { id: "steps", label: "Steps", key: "steps", tick: t => t >= 1000 ? `${t / 1000}k` : t, fmt: v => v.toLocaleString("en-GB") },
+  { id: "screen", label: "Late screens", key: "screen_after_11pm_min", tick: t => t, fmt: v => `${v} min` },
+];
+function renderPatterns() {
+  const tl = S.tl;
+  $("mtabs").innerHTML = METRICS.map(mm => `<button role="tab" aria-selected="${mm.id === S.metric}" data-m="${mm.id}">${mm.label}</button>`).join("");
+  $$("#mtabs button").forEach(b => b.onclick = () => { S.metric = b.dataset.m; S.animateMetric = true; renderPatterns(); drawPatterns(); });
+  const mm = METRICS.find(x => x.id === S.metric);
+  const exam = tl.some(d => d.is_exam_day);
+  $("m-legend").innerHTML = `<span><i class="sw line"></i>${mm.label}</span>` + (mm.baseline != null ? `<span><i class="sw dash"></i>${mm.base}</span>` : "") +
+    `<span><i class="sw flag"></i>Flagged day</span>` + (exam ? `<span><i class="sw band"></i>Exam days</span>` : "");
 
-async function renderConsent() {
-  const c = await j("/api/consent");
-  const rows = [];
-  for (const kind of ["sources", "purposes"]) for (const [k, v] of Object.entries(c[kind]))
-    rows.push(`<label class="sw">${kind === "sources" ? "Source" : "Purpose"}: ${k.replace(/_/g, " ")}<input type="checkbox" data-kind="${kind}" data-key="${k}" ${v ? "checked" : ""}></label>`);
-  $("consent").innerHTML = rows.join("");
-  $("consent").querySelectorAll("input").forEach(el => el.onchange = async () => {
-    await j("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: el.dataset.kind, key: el.dataset.key, value: el.checked }) });
-    await renderGateway();
-    if (health.bedrock && el.dataset.key === "cloud_narration") showBrief((await j("/api/brief")).brief);
+  $("drivers").innerHTML = S.ins.map(i => `<tr><td>${esc(i.sentence)}</td><td class="n" data-l="ρ">${fmtRho(i.rho)}</td><td class="n" data-l="p">${fmtP(i.p_value)}</td><td class="n" data-l="days">${i.n_days}</td></tr>`).join("")
+    || `<tr><td colspan="4"><div class="empty">No pattern passes |ρ| ≥ 0.3 and p &lt; 0.05 in this data yet.</div></td></tr>`;
+
+  const nights = tl.filter(d => d.sleep_min != null && d.screen_after_11pm_min != null);
+  $("sc-meta").textContent = `${nights.length} nights`;
+
+  // flagged table: chip counts are computed from the rows
+  const cat = a => a.drift.length ? a.drift.map(d => d.metric) : ["combination"];
+  const counts = { all: S.an.length };
+  S.an.forEach(a => cat(a).forEach(c => counts[c] = (counts[c] || 0) + 1));
+  const order = ["all", "sleep", "resting heart rate", "HRV", "steps", ...Object.keys(counts).filter(k => !["all", "sleep", "resting heart rate", "HRV", "steps", "combination"].includes(k)), "combination"];
+  if (!counts[S.filter]) S.filter = "all";
+  $("fchips").innerHTML = order.filter(k => counts[k]).map(k => `<button class="chip" aria-pressed="${k === S.filter}" data-f="${esc(k)}">${k === "all" ? "All" : k === "combination" ? "Unusual combination" : metricName(k)}<span class="c">${counts[k]}</span></button>`).join("");
+  $$("#fchips .chip").forEach(c => c.onclick = () => { S.filter = c.dataset.f; renderPatterns(); });
+  renderFlagRows(cat);
+}
+function renderFlagRows(cat) {
+  cat = cat || (a => a.drift.length ? a.drift.map(d => d.metric) : ["combination"]);
+  const q = S.query.trim().toLowerCase();
+  const rows = S.an.slice().reverse().filter(a => (S.filter === "all" || cat(a).includes(S.filter)) &&
+    (!q || `${fmtDay(a.date, { weekday: "long", day: "numeric", month: "long" })} ${a.date} ${cat(a).join(" ")} ${a.drift.map(d => metricName(d.metric)).join(" ")}`.toLowerCase().includes(q)));
+  $("af-meta").textContent = `${rows.length} shown of ${S.an.length} flagged · ${S.tl.length} days`;
+  $("flagrows").innerHTML = rows.map(a => `<tr><td><b class="tnum">${fmtDay(a.date, { weekday: "short", day: "numeric", month: "short" })}</b></td><td>${driftHtml(a)}</td><td class="n" data-l="score">${a.iforest_score.toFixed(2)}</td></tr>`).join("")
+    || `<tr><td colspan="3"><div class="empty">No flagged day matches${q ? ` “${esc(S.query)}”` : ""}. <button class="textbtn" style="padding:0;margin:0" onclick="clearFlagFilter()">Clear the filter</button></div></td></tr>`;
+}
+function clearFlagFilter() { S.filter = "all"; S.query = ""; $("fsearch").value = ""; renderPatterns(); }
+
+function drawPatterns(animate) {
+  const mm = METRICS.find(x => x.id === S.metric), tl = S.tl;
+  let min, max, ticks;
+  if (mm.fixed) { [min, max] = mm.fixed; ticks = mm.ticks; }
+  else { const vals = tl.flatMap(d => [d[mm.key], typeof mm.baseline === "string" ? d[mm.baseline] : null]).filter(v => v != null);
+         ({ min, max, ticks } = niceScale(Math.min(...vals), Math.max(...vals), 4)); }
+  if (mm.id === "sleep") { const sc = niceScale(Math.min(...tl.map(d => d.sleep_min).filter(Boolean)) / 60, Math.max(...tl.map(d => d.sleep_min).filter(Boolean)) / 60, 4);
+                           min = sc.min * 60; max = sc.max * 60; ticks = sc.ticks.map(t => t * 60); }
+  lineChart($("mchart"), { data: tl, key: mm.key, min, max, ticks: mm.fixed ? ticks.filter(t => t !== 50) : ticks, tickFmt: mm.tick, baseline: mm.baseline,
+    band: d => d.is_exam_day, tip: dayTip, label: `${mm.label} over ${tl.length} days`, animate: animate || S.animateMetric });
+  S.animateMetric = false;
+  scatter();
+}
+function scatter() {
+  const el = $("schart"); el.innerHTML = ""; const W = el.clientWidth, H = el.clientHeight; if (!W) return;
+  const pts = S.tl.filter(d => d.sleep_min != null && d.screen_after_11pm_min != null);
+  const m = { l: 36, r: 10, t: 10, b: 40 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const xs = niceScale(0, Math.max(...pts.map(p => p.screen_after_11pm_min)), 4);
+  const ys = niceScale(Math.min(...pts.map(p => p.sleep_min)) / 60, Math.max(...pts.map(p => p.sleep_min)) / 60, 4);
+  const X = v => m.l + iw * (v - xs.min) / (xs.max - xs.min), Y = v => m.t + ih * (1 - (v / 60 - ys.min) / (ys.max - ys.min));
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="Late screen minutes against sleep, one dot per night">`;
+  ys.ticks.forEach(t => s += `<line class="g" x1="${m.l}" x2="${W - m.r}" y1="${Y(t * 60)}" y2="${Y(t * 60)}"/><text class="tk" x="${m.l - 8}" y="${Y(t * 60) + 4}" text-anchor="end">${t} h</text>`);
+  xs.ticks.forEach(t => s += `<text class="tk" x="${X(t)}" y="${m.t + ih + 16}" text-anchor="middle">${t}</text>`);
+  s += `<text class="tk" x="${m.l + iw / 2}" y="${H - 2}" text-anchor="middle">minutes on the phone after 11 pm</text>`;
+  pts.forEach((p, i) => s += `<circle class="pt${p.is_anomaly ? " flagged" : ""}" cx="${X(p.screen_after_11pm_min)}" cy="${Y(p.sleep_min)}" r="4" data-i="${S.tl.indexOf(p)}"/>`);
+  el.innerHTML = s + "</svg>";
+  el.querySelectorAll("circle").forEach(c => {
+    c.addEventListener("pointerenter", e => showTip(dayTip(S.tl[+c.dataset.i]), e.clientX, e.clientY));
+    c.addEventListener("pointerleave", hideTip);
   });
 }
 
-async function renderGateway() {
+/* ================= privacy ================= */
+function switchRow(kind, key, on, [t, x]) {
+  return `<li class="toggle-row"><div><div class="t" id="lbl-${key}">${t}</div><div class="x">${x}</div></div>
+    <button class="switch" role="switch" aria-checked="${on}" aria-labelledby="lbl-${key}" data-kind="${kind}" data-key="${key}"></button></li>`;
+}
+function renderConsent() {
+  const c = S.consent;
+  $("purposes").innerHTML = Object.entries(c.purposes).map(([k, v]) => switchRow("purposes", k, v, PURPOSE[k] || [k.replace(/_/g, " "), ""])).join("");
+  $("sources").innerHTML = Object.entries(c.sources).map(([k, v]) => switchRow("sources", k, v, SOURCE[k] || [k.replace(/_/g, " "), ""])).join("");
+  const on = Object.values(c.purposes).filter(Boolean).length;
+  $("vault-meta").textContent = `${on} of ${Object.keys(c.purposes).length} cloud purposes on`;
+  $$(".vault .switch").forEach(b => b.onclick = () => setConsent(b));
+}
+async function setConsent(b) {
+  const value = b.getAttribute("aria-checked") !== "true", { kind, key } = b.dataset;
+  b.setAttribute("aria-checked", String(value)); b.disabled = true;
+  try {
+    S.consent = await post("/api/consent", { kind, key, value });
+    const name = (kind === "purposes" ? PURPOSE : SOURCE)[key]?.[0] || key;
+    logEvent(`${name} switched ${value ? "on" : "off"}`);
+    toast(`${name} ${value ? "on" : "off"}`, key === "cloud_narration" ? (value ? "The gateway now shows exactly what would be sent." : "Nothing is sent to the cloud.") : "Saved in the local consent vault.", value ? "ok" : "");
+    renderConsent();
+    await renderGateway(key === "cloud_narration");
+    if (key === "cloud_narration" && S.health.bedrock) { S.brief = (await api("/api/brief")).brief; showBrief(S.brief); }
+  } catch (e) { console.error(e); b.setAttribute("aria-checked", String(!value)); toast("Couldn't save that change", "The local API didn't answer. Try again.", "warn"); }
+  finally { b.disabled = false; }
+}
+function logEvent(text) { S.log.unshift({ t: nowTime(), text, fresh: true }); renderLog(); }
+function renderLog() {
+  $("log").innerHTML = S.log.map(l => `<li class="${l.fresh ? "fresh" : ""}"><span class="tm">${l.t}</span><span>${esc(l.text)}</span></li>`).join("")
+    || `<li class="e"><div class="empty">No consent changes in this session. Every cloud purpose starts off.</div></li>`;
+  S.log.forEach(l => l.fresh = false);
+}
+async function renderGateway(logIt) {
   const r = await fetch("/api/facts/cloud_narration");
   if (r.status === 403) {
-    $("gateway").innerHTML = `<div class="locked"><span class="icon">🔒</span><div>Blocked: no consent<div class="muted"
-      style="font-weight:400">Nothing is sent to the cloud. Turn on "Purpose: cloud narration" to see exactly what would be.</div></div></div>`;
+    S.gfacts = null;
+    $("gateway").innerHTML = `<div class="gate-state"><span class="ic"><svg width="20" height="20" aria-hidden="true"><use href="#i-lock"/></svg></span>
+      <div><b>Blocked: no consent</b><span>Nothing is sent to the cloud. Switch on cloud narration to see exactly what would be.</span></div></div>
+      <p class="never" style="margin-top:16px"><b>The allow-list.</b> If you switch it on, only these ${Object.keys(FACT_LABEL).length} aggregate fields can pass the gateway:</p>
+      <ul class="allow">${Object.values(FACT_LABEL).map(l => `<li>${esc(l)}</li>`).join("")}</ul>`;
+    if (logIt) logEvent("Gateway blocked cloud narration (403, no consent)");
     return;
   }
-  const facts = await r.json();
-  $("gateway").innerHTML = "";
-  const pre = document.createElement("pre");
-  pre.className = "facts";
-  pre.textContent = JSON.stringify(facts, null, 2);
-  $("gateway").appendChild(pre);
+  S.gfacts = await r.json();
+  if (logIt) logEvent(`Gateway released ${Object.keys(S.gfacts).length} aggregate fields for cloud narration`);
+  drawGateway();
 }
+function drawGateway() {
+  const f = S.gfacts; if (!f) return;
+  $$("#gtabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.g === S.gview)));
+  if (S.gview === "json") { $("gateway").innerHTML = `<pre class="json">${esc(JSON.stringify(f, null, 2))}</pre>`; return; }
+  const val = (k, v) => Array.isArray(v) ? (v.length ? `<ul>${v.map(x => `<li>${esc(typeof x === "string" ? x : `${x.metric} ${x.value} ${x.unit} vs normal ${x.your_normal}`)}</li>`).join("")}</ul>` : "none")
+    : typeof v === "boolean" ? (v ? "yes" : "no") : v == null ? "–" : esc(v);
+  $("gateway").innerHTML = `<div class="facts"><ul class="rows">${Object.entries(f).map(([k, v]) => `<li><span class="k">${FACT_LABEL[k] || k}<code>${k}</code></span><span class="v">${val(k, v)}</span></li>`).join("")}</ul></div>`;
+}
+$$("#gtabs button").forEach(b => b.onclick = () => { S.gview = b.dataset.g; drawGateway(); });
 
-$("screen").oninput = whatIf;
-// Voice brief: ElevenLabs when a key is set AND the user consented to 'voice_brief';
-// otherwise (or if that fails) the browser's built-in speech, which works offline.
-let audio = null;
-function stopVoice() {
-  if (audio) { audio.pause(); audio = null; }
-  if (window.speechSynthesis) speechSynthesis.cancel();
-  $("play").textContent = "▶ Play brief (device voice · ElevenLabs when key set)";
+/* ================= ask ================= */
+async function askData(question) {
+  question = question.trim(); if (!question) { $("q").focus(); return; }
+  $("q").value = ""; $("askbtn").disabled = true;
+  const item = { q: question, a: null };
+  S.thread.push(item); renderThread();
+  try { const a = await post("/api/ask", { question }); item.a = a.answer; item.src = a.source; $("asksrc").textContent = a.source; }
+  catch (e) { console.error(e); item.a = "Couldn't answer right now: the local API didn't respond."; item.src = "error"; }
+  $("askbtn").disabled = false; renderThread();
 }
+function renderCtx() {
+  const f = S.facts; if (!f) return;
+  const rows = [["Readiness today", round(f.readiness_today)], ["Readiness, 7-day average", round(f.readiness_7d_avg)],
+    ["Tomorrow, usual night", round(f.readiness_forecast_tomorrow)], ["Sleep, 7-day average", fmtMin(f.sleep_7d_avg_min)],
+    ["Sleep, your normal", fmtMin(f.sleep_normal_min)], ["Resting HR, 7-day average", f.resting_hr_7d_avg != null ? `${f.resting_hr_7d_avg} bpm` : "–"],
+    ["Steps, 7-day average", f.steps_7d_avg != null ? Math.round(f.steps_7d_avg).toLocaleString("en-GB") : "–"],
+    ["Drift today", f.drift_today.length ? f.drift_today.map(d => metricName(d.metric)).join(", ") : "none"], ["Patterns", f.insights.length]];
+  $("ctx").innerHTML = rows.map(([k, v]) => `<li><span class="k">${k}</span><span class="v">${v ?? "–"}</span></li>`).join("");
+}
+function renderThread() {
+  $("ask-empty").hidden = S.thread.length > 0;
+  $("thread").innerHTML = S.thread.map(t => `<li><div class="q">${esc(t.q)}</div>
+    <div class="a${t.a == null ? " pending" : ""}">${t.a == null ? "Reading your gateway facts…" : esc(t.a)}</div>
+    ${t.src ? `<div class="src"><span class="tag ${t.src === "bedrock" ? "live" : t.src === "error" ? "neg" : ""}">${t.src === "bedrock" ? "Bedrock, grounded" : t.src === "error" ? "error" : "on-device"}</span></div>` : ""}</li>`).join("");
+  const last = $("thread").lastElementChild; if (last) last.scrollIntoView({ block: "nearest", behavior: reduced() ? "auto" : "smooth" });
+}
+$("askform").onsubmit = e => { e.preventDefault(); askData($("q").value); };
+$$("#askchips .chip").forEach(c => c.onclick = () => askData(c.textContent));
+
+/* ================= voice: ElevenLabs with key + consent, otherwise the device voice (works offline) ================= */
+let audio = null;
+function setPlay(playing, label) {
+  $("play").innerHTML = playing ? `<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span>Stop</span>`
+                                : `<svg aria-hidden="true"><use href="#i-play"/></svg><span>${label || "Play brief"}</span>`;
+  $("play").dataset.playing = playing ? "1" : "";
+}
+function stopVoice() { if (audio) { audio.pause(); audio = null; } if (window.speechSynthesis) speechSynthesis.cancel(); setPlay(false); }
 function deviceVoice(text, note) {
   if (!window.speechSynthesis) { $("playmsg").textContent = "No speech engine in this browser."; return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const voices = speechSynthesis.getVoices().filter(v => v.lang && v.lang.startsWith("en"));
-  u.voice = voices.find(v => v.localService && v.lang === "en-IN")   // prefer an offline voice
-         || voices.find(v => v.localService) || voices[0] || null;
+  u.voice = voices.find(v => v.localService && v.lang === "en-IN") || voices.find(v => v.localService) || voices[0] || null;
   u.rate = 1.0;
   u.onend = () => stopVoice();
   u.onerror = e => { stopVoice(); if (e.error !== "interrupted" && e.error !== "canceled") $("playmsg").textContent = `Device voice failed (${e.error})`; };
   speechSynthesis.speak(u);
-  $("play").textContent = "■ Stop";
-  $("playmsg").textContent = note;
+  setPlay(true); $("playmsg").textContent = note;
 }
 $("play").onclick = async () => {
-  if ($("play").textContent.startsWith("■")) { stopVoice(); return; }
-  const text = $("brief").textContent;
-  if (health.elevenlabs) {
-    const c = await j("/api/consent");
+  if ($("play").dataset.playing) { stopVoice(); return; }
+  const text = S.brief ? S.brief.text : "";
+  if (!text) return;
+  if (S.health.elevenlabs) {
+    const c = await api("/api/consent");
     if (c.purposes.voice_brief) {
       $("playmsg").textContent = "Generating ElevenLabs audio…";
       try {
         const r = await fetch("/api/brief/voice", { method: "POST" });
-        if (r.ok) {
-          audio = new Audio(URL.createObjectURL(await r.blob()));
-          audio.onended = stopVoice;
-          await audio.play();
-          $("play").textContent = "■ Stop";
-          $("playmsg").textContent = "ElevenLabs voice";
-          return;
-        }
+        if (r.ok) { audio = new Audio(URL.createObjectURL(await r.blob())); audio.onended = stopVoice; await audio.play();
+                    setPlay(true); $("playmsg").textContent = "ElevenLabs voice"; return; }
       } catch (e) { console.error(e); }
-      deviceVoice(text, "ElevenLabs unavailable, using device voice");
-      return;
+      deviceVoice(text, "ElevenLabs unavailable, using the device voice"); return;
     }
-    deviceVoice(text, "Device voice (turn on 'voice brief' consent for ElevenLabs)");
-    return;
+    deviceVoice(text, "Device voice. Switch on voice brief consent for ElevenLabs."); return;
   }
   deviceVoice(text, "Device voice, on-device");
 };
-if (window.speechSynthesis) speechSynthesis.getVoices();          // warm up the voice list
+if (window.speechSynthesis) speechSynthesis.getVoices();
 
-async function askData(question) {
-  if (!question.trim()) return;
-  $("q").value = question;
-  $("answer").textContent = "…";
+/* ================= scenarios ================= */
+$$(".seg button").forEach(b => b.onclick = async () => {
+  if (b.getAttribute("aria-pressed") === "true") return;
+  const all = $$(".seg button"), note = $("sim-note"), before = new Set(S.an.map(a => a.date)), beforeR = round(S.facts?.readiness_today);
+  all.forEach(x => x.disabled = true); note.className = "side-note busy"; note.textContent = "Rerunning every model…";
   try {
-    const a = await j("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
-                                   body: JSON.stringify({ question }) });
-    $("answer").textContent = a.answer;
-    $("asksrc").textContent = a.source;
-  } catch (e) { $("answer").textContent = "Could not answer right now."; console.error(e); }
-}
-$("askbtn").onclick = () => askData($("q").value);
-$("q").onkeydown = e => { if (e.key === "Enter") askData($("q").value); };
-document.querySelectorAll(".chip").forEach(c => c.onclick = () => askData(c.textContent));
-
+    await post("/api/demo/scenario", { scenario: b.dataset.scenario });
+    await loadAll();
+    S.newFlags = new Set(S.an.map(a => a.date).filter(d => !before.has(d)));
+    stopVoice(); S.thread = []; renderThread();
+    renderAll(true);
+    const nr = round(S.facts.readiness_today), flagged = S.an.length;
+    const newest = S.tl.length && S.newFlags.has(S.tl[S.tl.length - 1].date);
+    toast(`${SCEN[S.scen]} data loaded`, newest ? `Last night was flagged. Readiness ${beforeR} → ${nr}.` : `Readiness ${nr} today · ${flagged} flagged days`, newest ? "warn" : "ok");
+    note.className = "side-note"; note.textContent = `${SCEN[S.scen]} data · ${S.tl.length} days, ${flagged} flagged`;
+    setTimeout(() => S.newFlags.clear(), 3000);
+    closeMenu();
+  } catch (e) { console.error(e); note.className = "side-note"; note.textContent = "Couldn't switch the data. Try again."; toast("Couldn't switch the data", "The local API didn't answer.", "warn"); }
+  finally { all.forEach(x => x.disabled = false); }
+});
 $("reset").onclick = async () => {
   $("reset").textContent = "Resetting…";
-  await fetch("/api/demo/reset", { method: "POST" });
-  location.reload();
+  try { await fetch("/api/demo/reset", { method: "POST" }); } catch (e) { console.error(e); }
+  location.hash = "#today"; location.reload();
 };
-load().catch(e => { $("health").textContent = "API not reachable"; console.error(e); });
+
+/* ================= views, routing, menu ================= */
+const TITLES = { today: "Today", patterns: "Patterns", privacy: "Privacy", ask: "Ask your data" };
+function route() {
+  const v = (location.hash || "#today").slice(1).split("/")[0];
+  const view = TITLES[v] ? v : "today";
+  const changed = view !== S.view || !$(`v-${view}`).classList.contains("active");
+  S.view = view;
+  $$(".view").forEach(s => s.classList.toggle("active", s.id === `v-${view}`));
+  $$("nav.primary a").forEach(a => a.toggleAttribute("aria-current", a.dataset.view === view) || a.dataset.view === view && a.setAttribute("aria-current", "page"));
+  $$("nav.primary a").forEach(a => a.dataset.view === view ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.title = `Introspect · ${TITLES[view]}`;
+  $("m-where").textContent = `· ${TITLES[view]}`;
+  if (changed) {
+    const sec = $(`v-${view}`);
+    [sec.querySelector(".title-row"), ...sec.querySelectorAll(".grid > *")].forEach((el, i) => el && el.style.setProperty("--i", i));
+    sec.classList.remove("enter"); void sec.offsetWidth; sec.classList.add("enter");
+    window.scrollTo({ top: 0 });
+  }
+  closeMenu(); hideTip();
+  if (S.loaded) drawVisible(changed);
+}
+function drawVisible(animate) {
+  if (!S.loaded) return;
+  if (S.view === "today") {
+    const exam = S.tl.some(d => d.is_exam_day);
+    lineChart($("rchart"), { data: S.tl, key: "readiness", min: 0, max: 100, ticks: [0, 25, 75, 100], baseline: 50, band: exam ? d => d.is_exam_day : null,
+      tip: dayTip, label: `Readiness over ${S.tl.length} days against your normal of 50`, todayLabel: v => `Today ${Math.round(v)}`, animate });
+    drawCurve(+$("screen").value);
+  }
+  if (S.view === "patterns") drawPatterns(animate);
+}
+const closeMenu = () => { if (document.body.classList.contains("menu")) { document.body.classList.add("closing"); setTimeout(() => document.body.classList.remove("closing"), 320); } document.body.classList.remove("menu"); $("menu").setAttribute("aria-expanded", "false"); };
+$("menu").onclick = () => { const open = !document.body.classList.contains("menu"); document.body.classList.toggle("menu", open); $("menu").setAttribute("aria-expanded", String(open)); };
+$("scrim").onclick = closeMenu;
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
+addEventListener("hashchange", route);
+document.addEventListener("click", e => { const a = e.target.closest("[data-focus]"); if (a) setTimeout(() => $(a.dataset.focus)?.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" }), 340); });
+let rz, lastW = 0;
+new ResizeObserver(([e]) => { const w = Math.round(e.contentRect.width); if (w === lastW) return; lastW = w;
+  clearTimeout(rz); rz = setTimeout(() => drawVisible(false), 100); }).observe(document.querySelector("main .col"));
+$("screen").oninput = () => whatIf(true);
+$$("#presets .preset").forEach(b => b.onclick = () => { $("screen").value = b.dataset.min; whatIf(true); });
+$("fsearch").oninput = e => { S.query = e.target.value; renderFlagRows(); };
+
+function renderAll(animate) {
+  renderShell(); renderToday(); renderPatterns(); renderConsent(); renderLog(); renderCtx();
+  drawVisible(animate);
+}
+
+async function boot() {
+  route();
+  try {
+    S.health = await api("/api/health");
+    const [c] = await Promise.all([api("/api/consent"), loadAll()]);
+    S.consent = c;
+    $("err").innerHTML = "";
+    renderAll(true);
+    await renderGateway(false);
+    $("sim-note").textContent = `${SCEN[S.scen]} data · ${S.tl.length} days, ${S.an.length} flagged`;
+  } catch (e) {
+    console.error(e);
+    $("d-api").className = "dot"; $("s-api").textContent = "Local API · not reachable";
+    $("err").innerHTML = `<div class="err" role="alert">Couldn't reach the on-device API at 127.0.0.1. Start it with demo.bat, then retry. <button class="btn ghost" style="height:32px" onclick="location.reload()">Retry</button></div>`;
+  }
+}
+boot();
 </script>
 </body>
 </html>
