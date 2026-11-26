@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from introspect import __version__, config, consent, forecast, pipeline, privacy, voice
+from introspect import __version__, config, consent, forecast, pipeline, privacy, synthetic, voice
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="Introspect API", version=__version__,
@@ -144,6 +144,30 @@ def demo_reset():
     clear_caches()
     _result()                                   # rebuild now so the reloaded page is instant
     return {"status": "ok", "dataset": "sample", "consent": consent.load()}
+
+
+class ScenarioChange(BaseModel):
+    scenario: str   # one of synthetic.SCENARIOS
+
+
+@app.get("/api/demo/scenario")
+def get_scenario():
+    d = _active["dir"]
+    return {"scenario": Path(d).name if d else "default", "available": list(synthetic.SCENARIOS)}
+
+
+@app.post("/api/demo/scenario")
+def set_scenario(change: ScenarioChange):
+    """Swap in a synthetic scenario (normal / exam_week / bad_night) and recompute everything."""
+    if change.scenario not in synthetic.SCENARIOS:
+        raise HTTPException(400, f"unknown scenario; choose from {list(synthetic.SCENARIOS)}")
+    if change.scenario == "default":
+        _active["dir"] = None
+    else:
+        _active["dir"] = synthetic.generate(config.STATE_DIR / "demo_data" / change.scenario, scenario=change.scenario)
+    clear_caches()
+    _result()                                   # recompute now so the dashboard re-fetch is instant
+    return get_scenario()
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "dashboard"), name="static")

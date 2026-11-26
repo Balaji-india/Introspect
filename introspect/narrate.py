@@ -25,6 +25,9 @@ def template_brief(f: dict) -> str:
         parts.append(f"Good morning. Your readiness today is {r:.0f}, {mood} your normal.")
     for d in f.get("drift_today", []):
         parts.append(f"Your {d['metric']} was {d['value']:g} {d['unit']}, against a normal of {d['your_normal']:g}.")
+    if f.get("is_exam_week") and f.get("sleep_7d_avg_min") is not None and f.get("sleep_normal_min") is not None:
+        parts.append(f"Your calendar shows an exam week: you averaged {f['sleep_7d_avg_min']:.0f} min of sleep "
+                     f"over the last 7 days, against a normal of {f['sleep_normal_min']:.0f}.")
     if f.get("insights"):
         parts.append(f["insights"][0])
     if f.get("readiness_forecast_tomorrow") is not None:

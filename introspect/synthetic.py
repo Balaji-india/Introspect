@@ -18,20 +18,34 @@ import pandas as pd
 
 USER_ID = 1503960366  # matches the style of Fitbit export ids
 
+# Demo scenarios ("watch it detect live"). "default" reproduces data/sample exactly.
+#   normal:    no exam week, no planted bad night
+#   exam_week: a 7-day exam week that ends yesterday, with more late-night screen time
+#   bad_night: the planted bad night is last night (the latest day), so today's brief changes
+SCENARIOS = ("default", "normal", "exam_week", "bad_night")
 
-def generate(out_dir: str | Path, days: int = 60, seed: int = 7, end: str = "2026-11-23") -> Path:
+
+def generate(out_dir: str | Path, days: int = 60, seed: int = 7, end: str = "2026-11-23",
+             scenario: str = "default") -> Path:
+    if scenario not in SCENARIOS:
+        raise ValueError(f"unknown scenario {scenario!r}; choose from {SCENARIOS}")
     rng = np.random.default_rng(seed)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     dates = pd.date_range(end=end, periods=days, freq="D")
     n = len(dates)
 
-    weekend = dates.dayofweek >= 5
+    weekend = dates.day_of_week >= 5
     exam = np.zeros(n, dtype=bool)
-    exam[n - 16 : n - 9] = True          # one exam week, two weeks ago
+    if scenario in ("default", "bad_night"):
+        exam[n - 16 : n - 9] = True      # one exam week, two weeks ago
+    elif scenario == "exam_week":
+        exam[n - 8 : n - 1] = True       # exam week ending yesterday (today is n-1)
 
     # Phone: minutes of screen time after 11 pm (bursty, worse in exam week)
     screen_late = rng.gamma(2.0, 22.0, n) + np.where(weekend, 25, 0) + np.where(exam, 45, 0)
+    if scenario == "exam_week":
+        screen_late = screen_late + np.where(exam, 30, 0)   # cramming: even more late-night phone time
     screen_late = np.clip(screen_late, 0, 240)
 
     # Sleep responds to late screen time and exams
@@ -51,11 +65,12 @@ def generate(out_dir: str | Path, days: int = 60, seed: int = 7, end: str = "202
     resting_hr = 63 + 0.035 * sleep_debt + np.where(exam, 3.5, 0) + rng.normal(0, 1.4, n)
     hrv = 58 - 0.06 * sleep_debt - np.where(exam, 7, 0) + rng.normal(0, 3.5, n)
 
-    # One clear anomaly: a night out + fever-like day (for the demo)
-    k = n - 4
-    sleep[k] = 262
-    resting_hr[k] = 76
-    hrv[k] = 31
+    # One clear anomaly: a short night out with elevated resting HR and low HRV (for the demo)
+    k = {"default": n - 4, "bad_night": n - 1}.get(scenario)
+    if k is not None:
+        sleep[k] = 262
+        resting_hr[k] = 76
+        hrv[k] = 31
 
     # Calendar & check-ins
     events = (rng.poisson(2.2, n) + np.where(exam, 3, 0)).astype(int)

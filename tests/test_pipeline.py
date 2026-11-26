@@ -144,3 +144,38 @@ def test_cached_fit_predicts_same_as_retraining(frame):
     for screen in (0, 60, 150):
         assert forecast.predict(fitted, planned_screen_min=screen) == \
             forecast.train_and_forecast(frame, planned_screen_min=screen)
+
+
+def test_default_scenario_matches_committed_sample(tmp_path):
+    out = generate(tmp_path, scenario="default")
+    sample = config.ROOT / "data" / "sample"
+    for f in ("dailyActivity_merged.csv", "sleepDay_merged.csv", "heartrateDaily.csv", "screen_time.csv"):
+        assert (out / f).read_text() == (sample / f).read_text()
+
+
+def test_scenario_normal_has_no_exam_week_or_bad_night(tmp_path):
+    df = ingest.build_timeline(generate(tmp_path, scenario="normal"))
+    assert df["is_exam_day"].sum() == 0
+    assert df["sleep_min"].min() > 262
+
+
+def test_scenario_exam_week_ends_yesterday(tmp_path):
+    res = pipeline.run(generate(tmp_path, scenario="exam_week"))
+    exam = [d["is_exam_day"] for d in res["timeline"]]
+    assert exam[-1] == 0 and exam[-8:-1] == [1] * 7 and sum(exam) == 7
+    assert res["facts"]["is_exam_week"]
+    assert "exam week" in res["brief"]["text"]
+
+
+def test_scenario_bad_night_is_last_night_and_changes_brief(tmp_path):
+    res = pipeline.run(generate(tmp_path, scenario="bad_night"))
+    assert res["timeline"][-1]["is_anomaly"]
+    assert res["anomalies"][-1]["date"] == res["timeline"][-1]["date"]
+    metrics = {d["metric"] for d in res["facts"]["drift_today"]}
+    assert {"sleep", "resting heart rate", "HRV"} <= metrics
+    assert "Take it easy" in res["brief"]["text"]
+
+
+def test_unknown_scenario_is_rejected(tmp_path):
+    with pytest.raises(ValueError):
+        generate(tmp_path, scenario="zombie")

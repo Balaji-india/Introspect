@@ -62,3 +62,18 @@ def test_demo_reset_restores_first_load_state():
     assert not (config.STATE_DIR / "demo_data").exists()
     assert keep.exists()                                # reset only deletes its own files
     assert client.get("/api/brief").json() == first
+
+
+def test_scenario_switch_updates_every_endpoint():
+    before = client.get("/api/timeline").json()
+    r = client.post("/api/demo/scenario", json={"scenario": "bad_night"})
+    assert r.status_code == 200 and r.json()["scenario"] == "bad_night"
+    assert (config.STATE_DIR / "demo_data" / "bad_night" / "dailyActivity_merged.csv").exists()
+    after = client.get("/api/timeline").json()
+    assert after[-1]["is_anomaly"] and not before[-1]["is_anomaly"]
+    assert "Take it easy" in client.get("/api/brief").json()["brief"]["text"]
+    assert client.get("/api/forecast", params={"screen_min": 30}).json()["status"] == "ok"
+    assert client.post("/api/demo/scenario", json={"scenario": "nope"}).status_code == 400
+    client.post("/api/demo/reset")
+    assert client.get("/api/demo/scenario").json()["scenario"] == "default"
+    assert client.get("/api/timeline").json() == before
