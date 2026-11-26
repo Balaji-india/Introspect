@@ -32,6 +32,11 @@
   .sim button { background:#fff; color:var(--navy); border:1px solid var(--navy); padding:6px 10px; }
   .sim button.on { background:var(--navy); color:#fff; }
   button:disabled { opacity:.5; cursor:wait; }
+  .locked { display:flex; gap:14px; align-items:center; padding:22px 16px; background:#FBF3EC; border:1px dashed var(--rust);
+            border-radius:10px; color:var(--rust); font-weight:600; }
+  .locked .icon { font-size:30px; }
+  pre.facts { margin:0; max-height:300px; overflow:auto; background:#F4F5FC; border:1px solid #D9DCF2; border-radius:10px;
+              padding:12px 14px; font-size:12px; line-height:1.45; color:var(--navy); white-space:pre-wrap; }
   footer { max-width:1200px; margin:0 auto; padding:0 28px 28px; display:flex; justify-content:space-between; }
   footer a { color:var(--gray); font-size:12px; text-decoration:underline; cursor:pointer; }
 </style>
@@ -86,10 +91,16 @@
     <ul class="ins" id="anoms"></ul>
   </section>
 
-  <section class="card span3">
-    <h2>Consent vault · what may leave this device</h2>
-    <div id="consent" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px 28px"></div>
-    <div class="muted" style="margin-top:6px">Raw data never leaves the device. Cloud purposes receive only aggregate facts via the privacy gateway.</div>
+  <section class="card">
+    <h2>Consent vault</h2>
+    <div id="consent"></div>
+    <div class="muted" style="margin-top:6px">Every cloud purpose is off by default.</div>
+  </section>
+  <section class="card span2">
+    <h2>What leaves this device <span class="tag">purpose: cloud narration</span></h2>
+    <div id="gateway"></div>
+    <div class="muted" style="margin-top:6px">Raw data never leaves the device. The privacy gateway releases only these
+      allow-listed aggregates (no dates, no ids, no raw series), and only with consent.</div>
   </section>
 </main>
 <footer>
@@ -143,7 +154,7 @@ async function render() {
       a.drift.map(d => `${d.metric} ${d.value} vs normal ${d.your_normal}`).join(" · ") || "unusual combination (Isolation Forest)"}</div></li>`).join("");
   const usual = await j("/api/forecast");             // start the slider at this user's usual night
   if (usual.status === "ok") $("screen").value = Math.round(usual.planned_screen_min / 10) * 10;
-  await whatIf();
+  await Promise.all([whatIf(), renderGateway()]);
 }
 
 document.querySelectorAll(".sim button").forEach(b => b.onclick = async () => {
@@ -174,9 +185,26 @@ async function renderConsent() {
   for (const kind of ["sources", "purposes"]) for (const [k, v] of Object.entries(c[kind]))
     rows.push(`<label class="sw">${kind === "sources" ? "Source" : "Purpose"}: ${k.replace(/_/g, " ")}<input type="checkbox" data-kind="${kind}" data-key="${k}" ${v ? "checked" : ""}></label>`);
   $("consent").innerHTML = rows.join("");
-  $("consent").querySelectorAll("input").forEach(el => el.onchange = () =>
-    j("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: el.dataset.kind, key: el.dataset.key, value: el.checked }) }));
+  $("consent").querySelectorAll("input").forEach(el => el.onchange = async () => {
+    await j("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: el.dataset.kind, key: el.dataset.key, value: el.checked }) });
+    await renderGateway();
+  });
+}
+
+async function renderGateway() {
+  const r = await fetch("/api/facts/cloud_narration");
+  if (r.status === 403) {
+    $("gateway").innerHTML = `<div class="locked"><span class="icon">🔒</span><div>Blocked: no consent<div class="muted"
+      style="font-weight:400">Nothing is sent to the cloud. Turn on "Purpose: cloud narration" to see exactly what would be.</div></div></div>`;
+    return;
+  }
+  const facts = await r.json();
+  $("gateway").innerHTML = "";
+  const pre = document.createElement("pre");
+  pre.className = "facts";
+  pre.textContent = JSON.stringify(facts, null, 2);
+  $("gateway").appendChild(pre);
 }
 
 $("screen").oninput = whatIf;

@@ -77,3 +77,16 @@ def test_scenario_switch_updates_every_endpoint():
     client.post("/api/demo/reset")
     assert client.get("/api/demo/scenario").json()["scenario"] == "default"
     assert client.get("/api/timeline").json() == before
+
+
+def test_privacy_card_flips_with_consent():
+    assert "What leaves this device" in client.get("/").text
+    assert client.get("/api/facts/cloud_narration").status_code == 403
+    client.post("/api/consent", json={"kind": "purposes", "key": "cloud_narration", "value": True})
+    facts = client.get("/api/facts/cloud_narration").json()
+    assert "readiness_today" in facts and "insights" in facts
+    text = str(facts)
+    assert "2026-" not in text and "1503960366" not in text      # no dates, no ids
+    assert not any(isinstance(v, list) and v and isinstance(v[0], (int, float)) for v in facts.values())
+    client.post("/api/consent", json={"kind": "purposes", "key": "cloud_narration", "value": False})
+    assert client.get("/api/facts/cloud_narration").status_code == 403
