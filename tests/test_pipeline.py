@@ -137,3 +137,10 @@ def test_loader_reads_raw_kaggle_fitbit_format(tmp_path):
     assert 58 <= df["resting_hr"].iloc[0] < 60   # 5th percentile of the day's HR
     df2 = ingest.build_timeline(tmp_path, user_id=222)
     assert len(df2) == 10
+
+
+def test_cached_fit_predicts_same_as_retraining(frame):
+    fitted = forecast.fit(frame)
+    for screen in (0, 60, 150):
+        assert forecast.predict(fitted, planned_screen_min=screen) == \
+            forecast.train_and_forecast(frame, planned_screen_min=screen)

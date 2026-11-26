@@ -13,12 +13,18 @@ def _r(x, nd=1):
     return None if x is None or (isinstance(x, float) and math.isnan(x)) else round(float(x), nd)
 
 
-def run(data_dir: str | Path | None = None, user_id: int | None = None) -> dict:
+def build_frame(data_dir: str | Path | None = None, user_id: int | None = None) -> pd.DataFrame:
+    """Ingest -> features -> personal baseline + anomaly flags."""
     df = ingest.build_timeline(data_dir or config.DATA_DIR, user_id)
-    df = features.add_features(df)
-    df = baseline.compute_baseline(df)
+    return baseline.compute_baseline(features.add_features(df))
+
+
+def run(data_dir: str | Path | None = None, user_id: int | None = None,
+        frame: pd.DataFrame | None = None, fitted: forecast.Fitted | dict | None = None) -> dict:
+    """Full pipeline. `frame` / `fitted` let a caller (the API) reuse cached work."""
+    df = frame if frame is not None else build_frame(data_dir, user_id)
     insights = why.as_dicts(why.find_insights(df))
-    fc = forecast.train_and_forecast(df)
+    fc = forecast.predict(fitted if fitted is not None else forecast.fit(df))
 
     today = df.iloc[-1]
     last7 = df.tail(7)

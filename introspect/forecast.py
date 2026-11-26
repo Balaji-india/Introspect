@@ -11,6 +11,8 @@ the main thing we will validate on real data (see README).
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 
@@ -50,8 +52,18 @@ def design_matrix(df: pd.DataFrame) -> pd.DataFrame:
     return X
 
 
-def train_and_forecast(df: pd.DataFrame, planned_screen_min: float | None = None,
-                       exam_tomorrow: int = 0, events_tomorrow: float | None = None) -> dict:
+@dataclass
+class Fitted:
+    """A trained what-if model plus everything needed to predict without retraining."""
+    model: object
+    today: pd.Series
+    usual_screen: float
+    usual_events: float
+    eval: dict
+
+
+def fit(df: pd.DataFrame) -> Fitted | dict:
+    """Train once (backtest + final model). Returns a status dict if there are too few days."""
     X = design_matrix(df)
     train = X.dropna()
     if len(train) < 20:
@@ -63,25 +75,36 @@ def train_and_forecast(df: pd.DataFrame, planned_screen_min: float | None = None
     persist = mean_absolute_error(te["target"], te["readiness"])
     mean_b = mean_absolute_error(te["target"], np.full(len(te), tr["target"].mean()))
     model = _model().fit(train[FEATURES], train["target"] - train["readiness"])
+    return Fitted(
+        model=model, today=df.iloc[-1],
+        usual_screen=float(df["screen_after_11pm_min"].median()) if "screen_after_11pm_min" in df else 0.0,
+        usual_events=float(df["events"].median()) if "events" in df else 0.0,
+        eval={"test_mae": round(float(mae), 1), "persistence_mae": round(float(persist), 1),
+              "personal_mean_mae": round(float(mean_b), 1), "train_days": int(split), "test_days": int(len(te))},
+    )
 
-    today = df.iloc[-1]
-    usual_screen = float(df["screen_after_11pm_min"].median()) if "screen_after_11pm_min" in df else 0.0
-    usual_events = float(df["events"].median()) if "events" in df else 0.0
 
-    def predict(screen):
-        row = pd.DataFrame([{
-            "readiness": today["readiness"], "sleep_debt_3d": today.get("sleep_debt_3d", 0),
-            "steps_7d": today.get("steps_7d", np.nan), "planned_screen_min": screen,
-            "exam_tomorrow": exam_tomorrow, "events_tomorrow": usual_events if events_tomorrow is None else events_tomorrow,
-            "weekend_tomorrow": int((today["date"] + pd.Timedelta(days=1)).dayofweek >= 5),
-        }])[FEATURES]
-        return round(float(np.clip(today["readiness"] + model.predict(row)[0], 0, 100)), 1)
+def predict(fitted: Fitted | dict, planned_screen_min: float | None = None,
+            exam_tomorrow: int = 0, events_tomorrow: float | None = None) -> dict:
+    """Prediction only (fast): used by the what-if slider."""
+    if not isinstance(fitted, Fitted):
+        return fitted
+    today, model = fitted.today, fitted.model
+    weekend = int((today["date"] + pd.Timedelta(days=1)).dayofweek >= 5)
+    events = fitted.usual_events if events_tomorrow is None else events_tomorrow
+    screen = fitted.usual_screen if planned_screen_min is None else planned_screen_min
+    plans = [screen, 10, fitted.usual_screen, 120]
+    rows = pd.DataFrame([{
+        "readiness": today["readiness"], "sleep_debt_3d": today.get("sleep_debt_3d", 0),
+        "steps_7d": today.get("steps_7d", np.nan), "planned_screen_min": s,
+        "exam_tomorrow": exam_tomorrow, "events_tomorrow": events, "weekend_tomorrow": weekend,
+    } for s in plans])[FEATURES]
+    preds = [round(float(np.clip(today["readiness"] + d, 0, 100)), 1) for d in model.predict(rows)]
+    return {"status": "ok", "tomorrow_readiness": preds[0], "planned_screen_min": round(screen),
+            "what_if": {"screens_off_by_11pm": preds[1], "usual_night": preds[2], "late_night_2h": preds[3]},
+            "eval": dict(fitted.eval), "model": type(model).__name__}
 
-    screen = usual_screen if planned_screen_min is None else planned_screen_min
-    return {"status": "ok", "tomorrow_readiness": predict(screen), "planned_screen_min": round(screen),
-            "what_if": {"screens_off_by_11pm": predict(10), "usual_night": predict(usual_screen),
-                        "late_night_2h": predict(120)},
-            "eval": {"test_mae": round(float(mae), 1), "persistence_mae": round(float(persist), 1),
-                     "personal_mean_mae": round(float(mean_b), 1), "train_days": int(split),
-                     "test_days": int(len(te))},
-            "model": type(model).__name__}
+
+def train_and_forecast(df: pd.DataFrame, planned_screen_min: float | None = None,
+                       exam_tomorrow: int = 0, events_tomorrow: float | None = None) -> dict:
+    return predict(fit(df), planned_screen_min, exam_tomorrow, events_tomorrow)

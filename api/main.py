@@ -12,21 +12,48 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from introspect import __version__, baseline, config, consent, features, forecast, ingest, pipeline, privacy, voice
+from introspect import __version__, config, consent, forecast, pipeline, privacy, voice
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="Introspect API", version=__version__,
               description="Private personal-intelligence twin: baseline, anomalies, why-engine, forecast, brief.")
 
 
-@lru_cache(maxsize=1)
+# --- active dataset + caches -------------------------------------------------------------
+# All endpoints read the *active* dataset (default: config.DATA_DIR). Demo scenarios switch it.
+_active: dict[str, Path | None] = {"dir": None}
+
+
+def data_dir() -> Path:
+    return Path(_active["dir"] or config.DATA_DIR)
+
+
+@lru_cache(maxsize=8)
+def _frame_for(d: str):
+    return pipeline.build_frame(d)
+
+
+@lru_cache(maxsize=8)
+def _fitted_for(d: str):
+    return forecast.fit(_frame_for(d))          # trained once per dataset; the slider only predicts
+
+
+@lru_cache(maxsize=8)
+def _result_for(d: str):
+    return pipeline.run(d, frame=_frame_for(d), fitted=_fitted_for(d))
+
+
 def _result():
-    return pipeline.run(config.DATA_DIR)
+    return _result_for(str(data_dir()))
 
 
-@lru_cache(maxsize=1)
-def _frame():
-    return baseline.compute_baseline(features.add_features(ingest.build_timeline(config.DATA_DIR)))
+def _fitted():
+    return _fitted_for(str(data_dir()))
+
+
+def clear_caches() -> None:
+    for f in (_frame_for, _fitted_for, _result_for):
+        f.cache_clear()
 
 
 @app.get("/api/health")
@@ -53,7 +80,7 @@ def insights():
 @app.get("/api/forecast")
 def what_if(screen_min: float | None = None, exam_tomorrow: int = 0):
     """Tomorrow's readiness for a planned amount of screen time after 11 pm tonight."""
-    return forecast.train_and_forecast(_frame(), planned_screen_min=screen_min, exam_tomorrow=exam_tomorrow)
+    return forecast.predict(_fitted(), planned_screen_min=screen_min, exam_tomorrow=exam_tomorrow)
 
 
 @app.get("/api/brief")
